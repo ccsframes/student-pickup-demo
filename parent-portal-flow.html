@@ -1,0 +1,1275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Student Pickup - Parent Portal Flow (Guestrar)</title>
+<style>
+  body { margin: 0; background: #f6f8fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1b1f24; }
+  #wrap { max-width: 1500px; margin: 0 auto; padding: 24px; }
+  #loading { padding: 40px; text-align: center; color: #57606a; }
+  input:focus, select:focus { border-color: #106DBA !important; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js" crossorigin></script>
+</head>
+<body>
+<div id="wrap"><div id="root"><div id="loading">Loading prototype...</div></div></div>
+<script id="app-src" type="text/plain">
+
+const { useState, useEffect } = React;
+type CSSProperties = any;
+type TextProps = { children?: any };
+
+const BRAND = "#106DBA";
+const THEME = {
+  text: { primary: "#1b1f24", secondary: "#57606a", tertiary: "#8b949e", quaternary: "#c4c9cf", link: BRAND, onAccent: "#ffffff" },
+  bg: { editor: "#ffffff", chrome: "#f3f5f7", elevated: "#ffffff" },
+  fill: { primary: "rgba(20,20,20,0.20)", secondary: "rgba(20,20,20,0.10)", tertiary: "rgba(16,109,186,0.08)", quaternary: "rgba(20,20,20,0.04)" },
+  stroke: { primary: "rgba(20,20,20,0.22)", secondary: "rgba(20,20,20,0.13)", tertiary: "rgba(20,20,20,0.07)", focused: BRAND },
+  accent: { primary: BRAND, control: BRAND, controlHover: "#0d5a9a" },
+  category: { red: "#d1242f", green: "#1a7f37", yellow: "#bf8700", blue: "#0969da", gray: "#8b949e", purple: "#8250df", cyan: "#1b7c83", pink: "#bf3989", orange: "#bc4c00" },
+};
+function useHostTheme() { return THEME; }
+
+function Stack({ children, gap = 8, style }: any) {
+  return <div style={{ display: "flex", flexDirection: "column", gap, ...style }}>{children}</div>;
+}
+function Row({ children, gap = 8, align = "center", justify = "start", wrap = false, style }: any) {
+  const m: any = { start: "flex-start", end: "flex-end", center: "center", stretch: "stretch", "space-between": "space-between" };
+  return <div style={{ display: "flex", gap, alignItems: m[align], justifyContent: m[justify], flexWrap: wrap ? "wrap" : "nowrap", ...style }}>{children}</div>;
+}
+function Grid({ children, columns, gap = 8, align, style }: any) {
+  const cols = typeof columns === "number" ? `repeat(${columns}, minmax(0, 1fr))` : columns;
+  return <div style={{ display: "grid", gridTemplateColumns: cols, gap, alignItems: align, ...style }}>{children}</div>;
+}
+function Spacer() { return <div style={{ flex: 1 }} />; }
+function Divider({ style }: any) { return <div style={{ height: 1, background: THEME.stroke.tertiary, width: "100%", ...style }} />; }
+function H1({ children, style }: any) { return <h1 style={{ fontSize: 24, lineHeight: "30px", fontWeight: 600, margin: 0, color: THEME.text.primary, ...style }}>{children}</h1>; }
+function H2({ children, style }: any) { return <h2 style={{ fontSize: 18, lineHeight: "24px", fontWeight: 600, margin: 0, color: THEME.text.primary, ...style }}>{children}</h2>; }
+function H3({ children, style }: any) { return <h3 style={{ fontSize: 16, lineHeight: "22px", fontWeight: 600, margin: 0, color: THEME.text.primary, ...style }}>{children}</h3>; }
+function Text({ children, tone = "primary", size = "body", weight = "normal", style }: any) {
+  const w: any = { normal: 400, medium: 500, semibold: 600, bold: 700 };
+  return <div style={{ margin: 0, fontSize: size === "small" ? 12 : 14, lineHeight: size === "small" ? "16px" : "20px", fontWeight: w[weight], color: (THEME.text as any)[tone], ...style }}>{children}</div>;
+}
+function Button({ children, variant = "secondary", disabled, onClick, style }: any) {
+  const base: any = { height: 28, padding: "0 12px", borderRadius: 6, fontSize: 12.5, fontWeight: 500, cursor: disabled ? "default" : "pointer", whiteSpace: "nowrap", border: "1px solid transparent", opacity: disabled ? 0.5 : 1 };
+  const v: any = {
+    primary: { background: BRAND, color: "#fff" },
+    secondary: { background: THEME.bg.editor, color: THEME.text.primary, borderColor: THEME.stroke.primary },
+    ghost: { background: "transparent", color: THEME.text.link },
+  };
+  return <button disabled={disabled} onClick={onClick} style={{ ...base, ...v[variant], ...style }}>{children}</button>;
+}
+function Pill({ children, active, size = "md", onClick, style }: any) {
+  return (
+    <span onClick={onClick} style={{ display: "inline-flex", alignItems: "center", padding: size === "sm" ? "2px 9px" : "4px 11px", borderRadius: 999, fontSize: size === "sm" ? 11 : 12, cursor: onClick ? "pointer" : "default", border: `1px solid ${active ? BRAND : THEME.stroke.secondary}`, background: active ? THEME.fill.tertiary : "transparent", color: active ? BRAND : THEME.text.secondary, fontWeight: active ? 600 : 400, ...style }}>
+      {children}
+    </span>
+  );
+}
+function Table({ headers, rows, rowTone, style }: any) {
+  const toneColor: any = { success: THEME.category.green, danger: THEME.category.red, warning: THEME.category.yellow, info: THEME.category.blue, neutral: THEME.text.tertiary };
+  return (
+    <div style={{ border: `1px solid ${THEME.stroke.secondary}`, borderRadius: 8, overflowX: "auto", ...style }}>
+      <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 12.5 }}>
+        <thead>
+          <tr>{headers.map((h: any, i: number) => <th key={i} style={{ textAlign: "left", padding: "7px 10px", fontWeight: 600, color: THEME.text.secondary, borderBottom: `1px solid ${THEME.stroke.secondary}`, background: THEME.bg.chrome }}>{h}</th>)}</tr>
+        </thead>
+        <tbody>
+          {rows.map((r: any[], ri: number) => (
+            <tr key={ri}>
+              {headers.map((_: any, ci: number) => (
+                <td key={ci} style={{ padding: "7px 10px", borderTop: ri > 0 ? `1px solid ${THEME.stroke.tertiary}` : undefined, color: THEME.text.primary, verticalAlign: "middle" }}>
+                  {ci === 0 && rowTone && rowTone[ri] ? <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: 4, background: toneColor[rowTone[ri]], marginRight: 7 }} /> : null}
+                  {r[ci]}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+const inputStyle: any = { height: 30, boxSizing: "border-box", width: "100%", border: `1px solid ${THEME.stroke.primary}`, borderRadius: 6, padding: "0 9px", fontSize: 13, color: THEME.text.primary, background: "#fff", outline: "none" };
+function TextInput({ value, onChange, placeholder, type = "text", style }: any) {
+  return <input type={type} value={value} placeholder={placeholder} onChange={(e: any) => onChange && onChange(e.target.value)} style={{ ...inputStyle, ...style }} />;
+}
+function Select({ value, onChange, options, style }: any) {
+  return <select value={value} onChange={(e: any) => onChange && onChange(e.target.value)} style={{ ...inputStyle, ...style }}>{options.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>;
+}
+function Checkbox({ checked, onChange, label }: any) {
+  return (
+    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: THEME.text.primary, padding: "3px 0", cursor: "pointer" }}>
+      <input type="checkbox" checked={!!checked} onChange={(e: any) => onChange && onChange(e.target.checked)} style={{ accentColor: BRAND }} />
+      {label}
+    </label>
+  );
+}
+function Toggle({ checked, onChange }: any) {
+  return (
+    <span onClick={() => onChange && onChange(!checked)} style={{ display: "inline-block", width: 32, height: 18, borderRadius: 9, background: checked ? BRAND : THEME.fill.secondary, position: "relative", cursor: onChange ? "pointer" : "default", flexShrink: 0 }}>
+      <span style={{ position: "absolute", top: 2, left: checked ? 16 : 2, width: 14, height: 14, borderRadius: 7, background: "#fff", transition: "left .15s" }} />
+    </span>
+  );
+}
+
+type Kids = any;
+
+
+/* ===================== Sample data ===================== */
+
+type Child = { id: string; name: string; cls: string; roll: string; token: string };
+type Person = { name: string; relation: string; mobile: string; kids: string[]; until?: string };
+
+const AARAV: Child = { id: "s1", name: "Aarav Shah", cls: "5-B", roll: "14", token: "SP7K2M9QX4LT8ZRA" };
+const ANAYA: Child = { id: "s2", name: "Anaya Shah", cls: "2-A", roll: "03", token: "SP4H8T1WB6NC2QMD" };
+const CHILDREN = [AARAV, ANAYA];
+
+const RAMESH: Person = { name: "Ramesh Patil", relation: "Driver", mobile: "90xxxx4471", kids: ["Aarav", "Anaya"] };
+const SURESH: Person = { name: "Suresh Mehta", relation: "Uncle", mobile: "99xxxx1034", kids: ["Aarav"], until: "31 Oct" };
+
+/* ===================== Building blocks ===================== */
+
+function Avatar({ name, size = 36, square = false }: { name: string; size?: number; square?: boolean }) {
+  const t = useHostTheme();
+  const initials = name
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("");
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: square ? 8 : size / 2,
+        background: t.fill.secondary,
+        color: t.text.secondary,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: Math.round(size * 0.36),
+        fontWeight: 600,
+        flexShrink: 0,
+      }}
+    >
+      {initials}
+    </div>
+  );
+}
+
+function Btn({ label, kind = "primary", disabled = false, danger = false }: { label: string; kind?: "primary" | "outline" | "link"; disabled?: boolean; danger?: boolean }) {
+  const t = useHostTheme();
+  if (kind === "link") {
+    return <div style={{ fontSize: 12, color: danger ? t.category.red : t.text.link, textAlign: "center", padding: "4px 0" }}>{label}</div>;
+  }
+  const primary = kind === "primary";
+  const bg = disabled ? t.fill.secondary : primary ? (danger ? t.category.red : t.accent.primary) : "transparent";
+  return (
+    <div
+      style={{
+        height: 36,
+        flexShrink: 0,
+        boxSizing: "border-box",
+        borderRadius: 10,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 13,
+        fontWeight: 600,
+        background: bg,
+        color: disabled ? t.text.tertiary : primary ? t.text.onAccent : danger ? t.category.red : t.text.primary,
+        border: primary && !disabled ? "none" : `1px solid ${danger ? t.category.red : t.stroke.primary}`,
+      }}
+    >
+      {label}
+    </div>
+  );
+}
+
+function Label({ children }: { children?: Kids }) {
+  const t = useHostTheme();
+  return <div style={{ fontSize: 11, fontWeight: 600, color: t.text.secondary, marginBottom: 4 }}>{children}</div>;
+}
+
+function Small({ children, tone = "secondary", center = false, style }: { children?: Kids; tone?: "secondary" | "tertiary" | "red"; center?: boolean; style?: CSSProperties }) {
+  const t = useHostTheme();
+  const color = tone === "red" ? t.category.red : tone === "tertiary" ? t.text.tertiary : t.text.secondary;
+  return <div style={{ fontSize: 11.5, lineHeight: "16px", color, textAlign: center ? "center" : undefined, ...style }}>{children}</div>;
+}
+
+function Title({ children, center = false }: { children?: Kids; center?: boolean }) {
+  const t = useHostTheme();
+  return <div style={{ fontSize: 15, fontWeight: 600, color: t.text.primary, textAlign: center ? "center" : undefined }}>{children}</div>;
+}
+
+function Input({ label, value, placeholder, error = false, big = false }: { label?: string; value?: string; placeholder?: string; error?: boolean; big?: boolean }) {
+  const t = useHostTheme();
+  return (
+    <div>
+      {label ? <Label>{label}</Label> : null}
+      <div
+        style={{
+          border: `1px solid ${error ? t.category.red : t.stroke.primary}`,
+          borderRadius: 8,
+          padding: big ? "9px 10px" : "7px 10px",
+          fontSize: big ? 18 : 13,
+          letterSpacing: big ? 6 : 0,
+          textAlign: big ? "center" : undefined,
+          color: value ? t.text.primary : t.text.tertiary,
+        }}
+      >
+        {value || placeholder}
+      </div>
+    </div>
+  );
+}
+
+function Chip({ label, active = false }: { label: string; active?: boolean }) {
+  const t = useHostTheme();
+  return (
+    <span
+      style={{
+        fontSize: 11,
+        padding: "4px 9px",
+        borderRadius: 12,
+        border: `1px solid ${active ? t.accent.primary : t.stroke.primary}`,
+        background: active ? t.fill.tertiary : "transparent",
+        color: active ? t.accent.primary : t.text.secondary,
+        fontWeight: active ? 600 : 400,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function Check({ label, checked }: { label: string; checked: boolean }) {
+  const t = useHostTheme();
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: t.text.primary, padding: "3px 0" }}>
+      <span
+        style={{
+          width: 15,
+          height: 15,
+          borderRadius: 4,
+          boxSizing: "border-box",
+          border: `1.5px solid ${checked ? t.accent.primary : t.stroke.primary}`,
+          background: checked ? t.accent.primary : "transparent",
+          color: t.text.onAccent,
+          fontSize: 10,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }}
+      >
+        {checked ? "✓" : ""}
+      </span>
+      {label}
+    </div>
+  );
+}
+
+function Switch({ label, on }: { label: string; on: boolean }) {
+  const t = useHostTheme();
+  return (
+    <div style={{ display: "flex", alignItems: "center", fontSize: 12.5, color: t.text.primary }}>
+      {label}
+      <span style={{ flex: 1 }} />
+      <span style={{ width: 30, height: 17, borderRadius: 9, background: on ? t.accent.primary : t.fill.secondary, position: "relative" }}>
+        <span style={{ position: "absolute", top: 2, left: on ? 15 : 2, width: 13, height: 13, borderRadius: 7, background: t.bg.editor }} />
+      </span>
+    </div>
+  );
+}
+
+function ResultIcon({ ok }: { ok: boolean }) {
+  const t = useHostTheme();
+  const color = ok ? t.category.green : t.category.red;
+  return (
+    <div style={{ display: "flex", justifyContent: "center", padding: "4px 0" }}>
+      <div
+        style={{
+          width: 44,
+          height: 44,
+          borderRadius: 22,
+          border: `2px solid ${color}`,
+          color,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 21,
+          fontWeight: 700,
+        }}
+      >
+        {ok ? "✓" : "!"}
+      </div>
+    </div>
+  );
+}
+
+function Photo({ name, has }: { name: string; has: boolean }) {
+  const t = useHostTheme();
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 3 }}>
+      {has ? (
+        <Avatar name={name} size={56} />
+      ) : (
+        <div
+          style={{
+            width: 56,
+            height: 56,
+            borderRadius: 28,
+            border: `1.5px dashed ${t.stroke.primary}`,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            fontSize: 10,
+            color: t.text.tertiary,
+          }}
+        >
+          Add photo
+        </div>
+      )}
+      <Small tone="tertiary">{has ? "Change photo" : "Take photo or choose from gallery"}</Small>
+    </div>
+  );
+}
+
+function SchoolHeader() {
+  const t = useHostTheme();
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 8, borderBottom: `1px solid ${t.stroke.tertiary}` }}>
+      <Avatar name="Sunrise School" size={34} square />
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: t.text.primary }}>Sunrise School</div>
+        <div style={{ fontSize: 10, color: t.text.secondary }}>Safe pickup · Parent portal</div>
+      </div>
+    </div>
+  );
+}
+
+function TopBar({ title, back = true, right }: { title: string; back?: boolean; right?: string }) {
+  const t = useHostTheme();
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      {back ? <span style={{ fontSize: 16, color: t.text.link }}>‹</span> : null}
+      <span style={{ fontSize: 15, fontWeight: 600, color: t.text.primary }}>{title}</span>
+      <span style={{ flex: 1 }} />
+      {right ? <span style={{ fontSize: 11, color: t.text.link }}>{right}</span> : null}
+    </div>
+  );
+}
+
+function QrCode({ token, size = 120 }: { token: string; size?: number }) {
+  const t = useHostTheme();
+  const n = 21;
+  let h = 7;
+  for (const ch of token) h = (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0;
+  if (h === 0) h = 1;
+  const rand = () => {
+    h ^= h << 13;
+    h >>>= 0;
+    h ^= h >>> 17;
+    h ^= h << 5;
+    h >>>= 0;
+    return h / 4294967296;
+  };
+  const finder = (r: number, c: number): boolean | undefined => {
+    for (const [or, oc] of [
+      [0, 0],
+      [0, n - 7],
+      [n - 7, 0],
+    ]) {
+      if (!(r >= or - 1 && r <= or + 7 && c >= oc - 1 && c <= oc + 7)) continue;
+      const rr = r - or;
+      const cc = c - oc;
+      if (rr < 0 || rr > 6 || cc < 0 || cc > 6) return false;
+      return rr === 0 || rr === 6 || cc === 0 || cc === 6 || (rr >= 2 && rr <= 4 && cc >= 2 && cc <= 4);
+    }
+    return undefined;
+  };
+  const cells: Array<[number, number]> = [];
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      const f = finder(r, c);
+      if (f === undefined ? rand() > 0.52 : f) cells.push([r, c]);
+    }
+  }
+  return (
+    <svg width={size} height={size} viewBox={`-1 -1 ${n + 2} ${n + 2}`} style={{ display: "block" }}>
+      <rect x={-1} y={-1} width={n + 2} height={n + 2} fill={t.bg.editor} />
+      {cells.map(([r, c]) => (
+        <rect key={`${r}-${c}`} x={c} y={r} width={1.02} height={1.02} fill={t.text.primary} />
+      ))}
+    </svg>
+  );
+}
+
+function Phone({ url, sms, children, overlay }: { url?: string; sms?: { title: string; sub: string }; children?: Kids; overlay?: Kids }) {
+  const t = useHostTheme();
+  return (
+    <div style={{ width: 250, boxSizing: "border-box", border: `1px solid ${t.stroke.primary}`, borderRadius: 26, padding: 7, background: t.bg.chrome, flexShrink: 0 }}>
+      <div
+        style={{
+          height: 510,
+          borderRadius: 19,
+          background: t.bg.editor,
+          border: `1px solid ${t.stroke.tertiary}`,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+          position: "relative",
+        }}
+      >
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "6px 14px 3px", fontSize: 10, color: t.text.tertiary, background: t.bg.chrome }}>
+          <span>2:45</span>
+          <span>5G</span>
+        </div>
+        {sms ? (
+          <div style={{ background: t.bg.chrome, padding: "2px 12px 9px", borderBottom: `1px solid ${t.stroke.tertiary}`, textAlign: "center" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: t.text.primary }}>{sms.title}</div>
+            <div style={{ fontSize: 10, color: t.text.tertiary }}>{sms.sub}</div>
+          </div>
+        ) : (
+          <div style={{ background: t.bg.chrome, padding: "2px 10px 8px", borderBottom: `1px solid ${t.stroke.tertiary}` }}>
+            <div style={{ background: t.fill.tertiary, borderRadius: 8, padding: "5px 10px", fontSize: 10.5, color: t.text.secondary, textAlign: "center" }}>{url}</div>
+          </div>
+        )}
+        <div style={{ flex: 1, overflowY: "auto", padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>{children}</div>
+        {overlay ? <div style={{ position: "absolute", inset: 0 }}>{overlay}</div> : null}
+      </div>
+    </div>
+  );
+}
+
+function Dialog({ title, children }: { title: string; children?: Kids }) {
+  const t = useHostTheme();
+  return (
+    <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "flex-end" }}>
+      <div style={{ position: "absolute", inset: 0, background: t.bg.chrome, opacity: 0.8 }} />
+      <div
+        style={{
+          position: "relative",
+          width: "100%",
+          background: t.bg.editor,
+          borderTop: `1px solid ${t.stroke.primary}`,
+          borderRadius: "16px 16px 0 0",
+          padding: 14,
+          display: "flex",
+          flexDirection: "column",
+          gap: 10,
+        }}
+      >
+        <div style={{ fontSize: 14, fontWeight: 600, color: t.text.primary }}>{title}</div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function PersonLine({ name, sub, action, tag }: { name: string; sub: string; action?: string; tag?: string }) {
+  const t = useHostTheme();
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 9, padding: "6px 0", borderBottom: `1px solid ${t.stroke.tertiary}` }}>
+      <Avatar name={name} size={32} />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text.primary }}>
+          {name}
+          {tag ? <span style={{ fontWeight: 400, color: t.text.tertiary }}> · {tag}</span> : null}
+        </div>
+        <div style={{ fontSize: 10.5, color: t.text.secondary }}>{sub}</div>
+      </div>
+      {action ? <span style={{ fontSize: 11, color: t.text.link }}>{action}</span> : null}
+    </div>
+  );
+}
+
+function ChildCard({ child, active, passes }: { child: Child; active?: boolean; passes?: number }) {
+  const t = useHostTheme();
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 9,
+        border: `1px solid ${active ? t.accent.primary : t.stroke.secondary}`,
+        borderRadius: 10,
+        padding: 8,
+      }}
+    >
+      <Avatar name={child.name} size={34} square />
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text.primary }}>{child.name}</div>
+        <div style={{ fontSize: 10.5, color: t.text.secondary }}>Class {child.cls}</div>
+      </div>
+      <span style={{ fontSize: 11, color: t.text.link }}>Passes{passes ? ` (${passes})` : ""}</span>
+    </div>
+  );
+}
+
+/* ===================== Storyboard scaffolding ===================== */
+
+function Step({ id, title, desc, api, children }: { id: string; title: string; desc: string; api?: string; children?: Kids }) {
+  const t = useHostTheme();
+  return (
+    <div style={{ width: 250, display: "flex", flexDirection: "column", gap: 8, flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <span style={{ fontSize: 11, fontWeight: 600, padding: "2px 7px", borderRadius: 6, background: t.fill.secondary, color: t.text.primary }}>{id}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: t.text.primary }}>{title}</span>
+      </div>
+      {children}
+      <div style={{ fontSize: 12, color: t.text.secondary, lineHeight: "17px" }}>{desc}</div>
+      {api ? <div style={{ fontSize: 10.5, color: t.text.tertiary, fontFamily: "monospace" }}>{api}</div> : null}
+    </div>
+  );
+}
+
+function StepRow({ children }: { children?: Kids }) {
+  return <div style={{ display: "flex", flexWrap: "wrap", gap: 22, alignItems: "flex-start" }}>{children}</div>;
+}
+
+function Section({ title, sub, children }: { title: string; sub: string; children?: Kids }) {
+  return (
+    <Stack gap={14}>
+      <Stack gap={2}>
+        <H2>{title}</H2>
+        <Text size="small" tone="secondary">
+          {sub}
+        </Text>
+      </Stack>
+      {children}
+    </Stack>
+  );
+}
+
+const BASE = "guestrar.com/p/sunrise";
+
+/* ===================== Flow chart ===================== */
+
+type Side = "t" | "b" | "l" | "r";
+type FNode = { id: string; col: number; row: number; text: string; kind?: "decision" | "alt" | "start" };
+type FEdge = { from: string; to: string; fs: Side; ts: Side; label?: string; alt?: boolean };
+
+const FN: FNode[] = [
+  { id: "link", col: 1, row: 0, text: "Taps link in class WhatsApp group", kind: "start" },
+  { id: "mob", col: 1, row: 1, text: "P1 Enter mobile number" },
+  { id: "d1", col: 1, row: 2, text: "Number in school records?", kind: "decision" },
+  { id: "nr", col: 0, row: 2, text: "P2 Not registered: contact school office", kind: "alt" },
+  { id: "otp", col: 1, row: 3, text: "P3 Enter OTP" },
+  { id: "d2", col: 1, row: 4, text: "OTP correct?", kind: "decision" },
+  { id: "err", col: 0, row: 4, text: "P3a Wrong OTP: retry, or locked 15 min after 5 tries", kind: "alt" },
+  { id: "d3", col: 1, row: 5, text: "Profile already created?", kind: "decision" },
+  { id: "prof", col: 2, row: 5, text: "P4 Create profile (name, relation, photo)" },
+  { id: "first", col: 2, row: 6, text: "P4b Add pickup persons now (or skip)" },
+  { id: "home", col: 1, row: 7, text: "P5 Home: children, who can pick up, recent pickups" },
+  { id: "qr", col: 0, row: 8, text: "P7 Passes: one QR per person per child" },
+  { id: "add", col: 1, row: 8, text: "P6 Add / edit / remove person" },
+  { id: "hist", col: 2, row: 8, text: "P8 Pickup history" },
+  { id: "me", col: 3, row: 8, text: "P9 My profile, log out" },
+];
+
+const FE: FEdge[] = [
+  { from: "link", to: "mob", fs: "b", ts: "t" },
+  { from: "mob", to: "d1", fs: "b", ts: "t" },
+  { from: "d1", to: "nr", fs: "l", ts: "r", label: "No", alt: true },
+  { from: "d1", to: "otp", fs: "b", ts: "t", label: "Yes" },
+  { from: "otp", to: "d2", fs: "b", ts: "t" },
+  { from: "d2", to: "err", fs: "l", ts: "r", label: "No", alt: true },
+  { from: "err", to: "otp", fs: "t", ts: "l", alt: true },
+  { from: "d2", to: "d3", fs: "b", ts: "t", label: "Yes" },
+  { from: "d3", to: "prof", fs: "r", ts: "l", label: "No" },
+  { from: "prof", to: "first", fs: "b", ts: "t" },
+  { from: "first", to: "home", fs: "b", ts: "r" },
+  { from: "d3", to: "home", fs: "b", ts: "t", label: "Yes" },
+  { from: "home", to: "qr", fs: "b", ts: "t" },
+  { from: "home", to: "add", fs: "b", ts: "t" },
+  { from: "home", to: "hist", fs: "b", ts: "t" },
+  { from: "home", to: "me", fs: "b", ts: "t" },
+];
+
+const COLW = 200;
+const ROWH = 78;
+const NW = 168;
+const NH = 50;
+const PAD = 16;
+
+function anchor(n: FNode, s: Side): [number, number] {
+  const x = PAD + n.col * COLW + (COLW - NW) / 2;
+  const y = PAD + n.row * ROWH;
+  if (s === "t") return [x + NW / 2, y];
+  if (s === "b") return [x + NW / 2, y + NH];
+  if (s === "l") return [x, y + NH / 2];
+  return [x + NW, y + NH / 2];
+}
+
+function normal(s: Side): [number, number] {
+  if (s === "t") return [0, -1];
+  if (s === "b") return [0, 1];
+  if (s === "l") return [-1, 0];
+  return [1, 0];
+}
+
+function FlowChart() {
+  const t = useHostTheme();
+  const byId = new Map(FN.map((n) => [n.id, n]));
+  const width = PAD * 2 + 4 * COLW;
+  const height = PAD * 2 + 8 * ROWH + NH;
+
+  return (
+    <div style={{ overflowX: "auto", border: `1px solid ${t.stroke.secondary}`, borderRadius: 10 }}>
+      <div style={{ position: "relative", width, height }}>
+        <svg width={width} height={height} style={{ position: "absolute", left: 0, top: 0 }}>
+          <defs>
+            <marker id="pp-arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="7" markerHeight="7" orient="auto">
+              <path d="M0,0 L8,4 L0,8 z" fill={t.text.tertiary} />
+            </marker>
+          </defs>
+          {FE.map((e) => {
+            const a = byId.get(e.from);
+            const b = byId.get(e.to);
+            if (!a || !b) return null;
+            const [sx, sy] = anchor(a, e.fs);
+            const [tx0, ty0] = anchor(b, e.ts);
+            const [nx, ny] = normal(e.fs);
+            const [mx, my] = normal(e.ts);
+            const tx = tx0 + mx * 2;
+            const ty = ty0 + my * 2;
+            const k = 28;
+            const d = `M ${sx} ${sy} C ${sx + nx * k} ${sy + ny * k}, ${tx + mx * k} ${ty + my * k}, ${tx} ${ty}`;
+            const lx = (sx + tx) / 2;
+            const ly = (sy + ty) / 2;
+            return (
+              <g key={`${e.from}-${e.to}`}>
+                <path d={d} fill="none" stroke={t.text.tertiary} strokeWidth={1.3} strokeDasharray={e.alt ? "4 3" : undefined} markerEnd="url(#pp-arrow)" />
+                {e.label ? (
+                  <text x={lx + (e.fs === "b" ? 8 : 0)} y={ly - (e.fs === "b" ? 0 : 5)} fontSize={10} fill={t.text.secondary} textAnchor={e.fs === "b" ? "start" : "middle"}>
+                    {e.label}
+                  </text>
+                ) : null}
+              </g>
+            );
+          })}
+        </svg>
+        {FN.map((n) => {
+          const x = PAD + n.col * COLW + (COLW - NW) / 2;
+          const y = PAD + n.row * ROWH;
+          const isDec = n.kind === "decision";
+          const isAlt = n.kind === "alt";
+          const isStart = n.kind === "start";
+          return (
+            <div
+              key={n.id}
+              style={{
+                position: "absolute",
+                left: x,
+                top: y,
+                width: NW,
+                height: NH,
+                boxSizing: "border-box",
+                borderRadius: isDec ? 25 : 6,
+                border: `1px ${isAlt ? "dashed" : "solid"} ${isStart ? t.accent.primary : isAlt ? t.stroke.primary : t.stroke.secondary}`,
+                background: isDec ? t.fill.tertiary : t.bg.editor,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                textAlign: "center",
+                padding: "4px 10px",
+                fontSize: 11,
+                lineHeight: "14px",
+                fontWeight: isDec ? 600 : 400,
+                color: isAlt ? t.text.secondary : t.text.primary,
+              }}
+            >
+              {n.text}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ===================== Screens (P0 = link posted in WhatsApp group) ===================== */
+
+function FirstTime() {
+  const t = useHostTheme();
+  return (
+    <StepRow>
+      <Step id="P0" title="Link in WhatsApp group" desc="The school copies the link from the admin web and posts it in each class WhatsApp group by hand. No SMS invite is sent." api="Copy link / Share on WhatsApp (W1)">
+        <Phone sms={{ title: "Class 5-B Parents", sub: "WhatsApp group · 42 members" }}>
+          <div style={{ fontSize: 10, color: t.text.tertiary, textAlign: "center" }}>Today 10:02 AM</div>
+          <div style={{ alignSelf: "flex-start", maxWidth: "90%", background: t.fill.tertiary, borderRadius: 14, padding: "9px 11px", fontSize: 12, lineHeight: "17px", color: t.text.primary }}>
+            <span style={{ display: "block", fontSize: 10.5, fontWeight: 600, color: t.accent.primary, marginBottom: 2 }}>Sunrise School Office</span>
+            Dear Parents, please open this link, verify the mobile you gave the school, and add who can pick up your child:{" "}
+            <span style={{ color: t.text.link, textDecoration: "underline" }}>{BASE}</span>
+          </div>
+        </Phone>
+      </Step>
+
+      <Step id="P1" title="Enter mobile" desc="Parent enters the mobile number given to the school at admission." api="GET /p/sunrise · POST /p/sunrise/send-otp">
+        <Phone url={BASE}>
+          <SchoolHeader />
+          <Title>Verify your mobile</Title>
+          <Small>Use the mobile number you gave the school at admission.</Small>
+          <Input label="Mobile number" value="+91 98765 00001" />
+          <Btn label="Send OTP" />
+          <div style={{ flex: 1 }} />
+          <Small tone="tertiary" center>
+            Your number is only used for school pickup.
+          </Small>
+        </Phone>
+      </Step>
+
+      <Step id="P3" title="Enter OTP" desc="OTP is sent only if the number is in the school records. Valid 5 minutes." api="POST /p/sunrise/verify-otp">
+        <Phone url={BASE}>
+          <SchoolHeader />
+          <Title>Enter OTP</Title>
+          <Small>We sent a 4-digit OTP to +91 98765 00001.</Small>
+          <Input value="1 2 3 4" big />
+          <Btn label="Verify" />
+          <Small tone="tertiary" center>
+            Resend OTP in 0:24 · Change number
+          </Small>
+        </Phone>
+      </Step>
+
+      <Step id="P4" title="Create profile" desc="First login only. Name and relation are pre-filled from the school's data. Photo is required so the guard can recognise the parent." api="POST /p/sunrise/profile">
+        <Phone url={`${BASE}/profile`}>
+          <Title>Create your profile</Title>
+          <Small>Step 1 of 2 · The guard sees your photo at the gate.</Small>
+          <Photo name="Rakesh Shah" has />
+          <Input label="Your name" value="Rakesh Shah" />
+          <div>
+            <Label>Relation</Label>
+            <div style={{ display: "flex", gap: 6 }}>
+              <Chip label="Father" active />
+              <Chip label="Mother" />
+              <Chip label="Guardian" />
+            </div>
+          </div>
+          <div style={{ border: `1px solid ${t.stroke.secondary}`, borderRadius: 10, padding: 9 }}>
+            <Label>Children linked to your number</Label>
+            {CHILDREN.map((c) => (
+              <div key={c.id} style={{ fontSize: 12, color: t.text.primary, padding: "2px 0" }}>
+                {c.name} · Class {c.cls}
+              </div>
+            ))}
+          </div>
+          <div style={{ flex: 1 }} />
+          <Btn label="Save and continue" />
+        </Phone>
+      </Step>
+
+      <Step id="P4b" title="Who else can pick up?" desc="Step 2 of 2. Parent can add the driver, grandparents and others now, or skip and do it later from Home." api="POST /p/sunrise/persons">
+        <Phone url={`${BASE}/setup`}>
+          <Title>Who else can pick up?</Title>
+          <Small>Step 2 of 2 · Add everyone who may collect Aarav or Anaya. You can change this any time.</Small>
+          <PersonLine name="Rakesh Shah" sub="Father · all children" tag="you" />
+          <PersonLine name={RAMESH.name} sub={`${RAMESH.relation} · Aarav, Anaya`} action="Edit" />
+          <div style={{ border: `1px dashed ${t.stroke.primary}`, borderRadius: 10, padding: 10, textAlign: "center", fontSize: 12, color: t.text.link }}>+ Add pickup person</div>
+          <div style={{ flex: 1 }} />
+          <Btn label="Finish" />
+          <Btn label="Skip for now" kind="link" />
+        </Phone>
+      </Step>
+
+      <Step id="P5" title="Home" desc="Everything in one place: each child with their own QR, everyone who can pick up, and the latest pickup." api="GET /p/sunrise/home">
+        <HomeScreen />
+      </Step>
+    </StepRow>
+  );
+}
+
+function HomeScreen({ extra }: { extra?: Person }) {
+  const t = useHostTheme();
+  const persons = extra ? [RAMESH, extra] : [RAMESH];
+  return (
+    <Phone url={`${BASE}/home`}>
+      <div style={{ display: "flex", alignItems: "center" }}>
+        <div>
+          <Title>Hello, Rakesh</Title>
+          <div style={{ fontSize: 10.5, color: t.text.secondary }}>Sunrise School</div>
+        </div>
+        <span style={{ flex: 1 }} />
+        <Avatar name="Rakesh Shah" size={28} />
+      </div>
+      <div style={{ background: t.fill.quaternary, borderRadius: 10, padding: 9, display: "flex", gap: 8, alignItems: "center" }}>
+        <span style={{ width: 8, height: 8, borderRadius: 4, background: t.category.green, flexShrink: 0 }} />
+        <div style={{ fontSize: 11.5, color: t.text.primary, lineHeight: "16px" }}>Yesterday 2:46 PM · Aarav picked up by Ramesh Patil</div>
+      </div>
+      <Label>Your children</Label>
+      {CHILDREN.map((c) => (
+        <ChildCard key={c.id} child={c} passes={c.id === "s1" ? (extra ? 4 : 3) : 3} />
+      ))}
+      <div style={{ display: "flex", alignItems: "center", marginTop: 2 }}>
+        <Label>Who can pick up</Label>
+        <span style={{ flex: 1 }} />
+        <span style={{ fontSize: 11, color: t.text.link }}>+ Add</span>
+      </div>
+      <PersonLine name="Rakesh Shah" sub="Father · all children" tag="you" />
+      <PersonLine name="Neha Shah" sub="Mother · verified" />
+      {persons.map((p) => (
+        <PersonLine key={p.name} name={p.name} sub={`${p.relation} · ${p.kids.join(", ")}${p.until ? ` · until ${p.until}` : ""}`} action="Edit" />
+      ))}
+      <div style={{ display: "flex", justifyContent: "space-around", paddingTop: 4 }}>
+        <span style={{ fontSize: 11, color: t.text.link }}>Pickup history</span>
+        <span style={{ fontSize: 11, color: t.text.link }}>My profile</span>
+      </div>
+    </Phone>
+  );
+}
+
+function Problems() {
+  const t = useHostTheme();
+  return (
+    <StepRow>
+      <Step id="P1a" title="Invalid number" desc="Checked in the browser before sending: must be a 10-digit Indian mobile.">
+        <Phone url={BASE}>
+          <SchoolHeader />
+          <Title>Verify your mobile</Title>
+          <Input label="Mobile number" value="98765 001" error />
+          <Small tone="red">Enter a valid 10-digit mobile number.</Small>
+          <Btn label="Send OTP" disabled />
+        </Phone>
+      </Step>
+
+      <Step id="P2" title="Not registered" desc="The number is not linked to any student of this school. No OTP is sent and nothing about other students is revealed." api="send-otp → not_registered">
+        <Phone url={BASE}>
+          <SchoolHeader />
+          <ResultIcon ok={false} />
+          <Title center>Number not registered</Title>
+          <Small center>+91 99999 99999 is not linked to any student at Sunrise School. Please contact the school office to add or update your number.</Small>
+          <div style={{ border: `1px solid ${t.stroke.secondary}`, borderRadius: 10, padding: 9 }}>
+            <Small>School office</Small>
+            <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text.primary }}>+91 22 4000 1234</div>
+            <Small tone="tertiary">Mon–Sat, 8 AM – 3 PM</Small>
+          </div>
+          <div style={{ flex: 1 }} />
+          <Btn label="Try another number" />
+          <Btn label="Call school office" kind="outline" />
+        </Phone>
+      </Step>
+
+      <Step id="P3a" title="Wrong OTP" desc="Shows remaining attempts. OTP is checked only on the server.">
+        <Phone url={BASE}>
+          <SchoolHeader />
+          <Title>Enter OTP</Title>
+          <Small>We sent a 4-digit OTP to +91 98765 00001.</Small>
+          <Input value="1 2 4 3" big error />
+          <Small tone="red">Wrong OTP. 3 attempts left.</Small>
+          <Btn label="Verify" />
+          <Small tone="tertiary" center>
+            Resend OTP · Change number
+          </Small>
+        </Phone>
+      </Step>
+
+      <Step id="P3b" title="Too many attempts" desc="After 5 wrong OTPs or 3 resends in 15 minutes the number is locked for 15 minutes.">
+        <Phone url={BASE}>
+          <SchoolHeader />
+          <ResultIcon ok={false} />
+          <Title center>Too many attempts</Title>
+          <Small center>For your safety, OTP is paused for this number. Please try again after 15 minutes.</Small>
+          <div style={{ flex: 1 }} />
+          <Btn label="Back" kind="outline" />
+        </Phone>
+      </Step>
+
+      <Step id="P3c" title="OTP expired" desc="OTP older than 5 minutes cannot be used. Parent asks for a new one.">
+        <Phone url={BASE}>
+          <SchoolHeader />
+          <Title>Enter OTP</Title>
+          <Input value="1 2 3 4" big error />
+          <Small tone="red">This OTP has expired. Please request a new one.</Small>
+          <Btn label="Send new OTP" />
+        </Phone>
+      </Step>
+
+      <Step id="P10" title="Session ended" desc="After 30 minutes without activity the parent is logged out. Opening the link again starts at P1." api="PickupParentSession middleware">
+        <Phone url={`${BASE}/home`}>
+          <SchoolHeader />
+          <ResultIcon ok={false} />
+          <Title center>Please verify again</Title>
+          <Small center>You were logged out after 30 minutes of inactivity. Your pickup persons and QR codes are saved.</Small>
+          <div style={{ flex: 1 }} />
+          <Btn label="Verify with OTP" />
+        </Phone>
+      </Step>
+    </StepRow>
+  );
+}
+
+function ManagePersons() {
+  return (
+    <StepRow>
+      <Step id="P6" title="Add pickup person" desc="Photo, name, relation and mobile are required. Saving creates one QR pass per ticked child (here: 1 pass, for Aarav) and sends the person an SMS with the link to view it." api="POST /p/sunrise/persons">
+        <Phone url={`${BASE}/persons/add`}>
+          <TopBar title="Add pickup person" />
+          <Photo name="Suresh Mehta" has />
+          <Input label="Name" value="Suresh Mehta" />
+          <div>
+            <Label>Relation</Label>
+            <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+              <Chip label="Driver" />
+              <Chip label="Grandparent" />
+              <Chip label="Uncle / Aunt" active />
+              <Chip label="Neighbour" />
+              <Chip label="Other" />
+            </div>
+          </div>
+          <Input label="Mobile" value="+91 99xxx x1034" />
+          <div>
+            <Label>Can pick up</Label>
+            <Check label="Aarav Shah (5-B)" checked />
+            <Check label="Anaya Shah (2-A)" checked={false} />
+          </div>
+          <Switch label="Only until a date" on />
+          <Input value="31 Oct 2026" />
+          <Btn label="Save" />
+        </Phone>
+      </Step>
+
+      <Step id="P5b" title="Home after adding" desc="The new person appears immediately and only for Aarav. At the gate, the guard sees Suresh on Aarav's QR but not on Anaya's.">
+        <HomeScreen extra={SURESH} />
+      </Step>
+
+      <Step id="P6a" title="Edit person" desc="Change photo, mobile, children or end date. Mobile change sends an SMS to the person so they know they were added." api="POST /p/sunrise/persons/{id}">
+        <Phone url={`${BASE}/persons/9/edit`}>
+          <TopBar title="Edit pickup person" />
+          <Photo name={RAMESH.name} has />
+          <Input label="Name" value={RAMESH.name} />
+          <Input label="Relation" value="Driver" />
+          <Input label="Mobile" value="+91 90xxx x4471" />
+          <div>
+            <Label>Can pick up</Label>
+            <Check label="Aarav Shah (5-B)" checked />
+            <Check label="Anaya Shah (2-A)" checked />
+          </div>
+          <div style={{ flex: 1 }} />
+          <Btn label="Save changes" />
+          <Btn label="Remove this person" kind="link" danger />
+        </Phone>
+      </Step>
+
+      <Step id="P6b" title="Remove person" desc="After confirming, all of Ramesh's passes (Aarav and Anaya) are revoked at once. Scanning them shows Pass not valid. History keeps his name." api="POST /p/sunrise/persons/{id}/remove">
+        <Phone
+          url={`${BASE}/persons/9/edit`}
+          overlay={
+            <Dialog title="Remove Ramesh Patil?">
+              <Small>Ramesh will no longer be able to pick up Aarav or Anaya. The guard will not see him when scanning their QR.</Small>
+              <Btn label="Remove" danger />
+              <Btn label="Cancel" kind="outline" />
+            </Dialog>
+          }
+        >
+          <TopBar title="Edit pickup person" />
+          <Photo name={RAMESH.name} has />
+          <Input label="Name" value={RAMESH.name} />
+        </Phone>
+      </Step>
+
+      <Step id="P6c" title="Limit reached" desc="A parent can have up to 10 pickup persons (configurable) to keep the guard's list short.">
+        <Phone url={`${BASE}/persons/add`}>
+          <TopBar title="Add pickup person" />
+          <ResultIcon ok={false} />
+          <Title center>Maximum 10 people</Title>
+          <Small center>Remove someone you no longer need before adding a new person.</Small>
+          <div style={{ flex: 1 }} />
+          <Btn label="Back to home" kind="outline" />
+        </Phone>
+      </Step>
+    </StepRow>
+  );
+}
+
+function QrAndMore() {
+  const t = useHostTheme();
+  return (
+    <StepRow>
+      <Step id="P7" title="Aarav's passes" desc="Every person who may collect Aarav has their own QR for him. Anaya has her own list, so a person allowed only for Aarav has no pass for Anaya." api="GET /p/sunrise/children/{id}/passes">
+        <Phone url={`${BASE}/children/aarav/passes`}>
+          <TopBar title="Pickup passes" />
+          <div style={{ display: "flex", gap: 6 }}>
+            <Chip label="Aarav" active />
+            <Chip label="Anaya" />
+          </div>
+          <Small>4 people can collect Aarav. Each has a separate QR.</Small>
+          {[
+            { name: "Rakesh Shah", rel: "Father · you" },
+            { name: "Neha Shah", rel: "Mother" },
+            { name: RAMESH.name, rel: RAMESH.relation },
+            { name: SURESH.name, rel: `${SURESH.relation} · until ${SURESH.until}` },
+          ].map((h) => (
+            <div key={h.name} style={{ display: "flex", alignItems: "center", gap: 9, border: `1px solid ${t.stroke.secondary}`, borderRadius: 10, padding: 7 }}>
+              <QrCode token={`${h.name}-aarav`} size={34} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text.primary }}>{h.name}</div>
+                <div style={{ fontSize: 10.5, color: t.text.secondary }}>{h.rel}</div>
+              </div>
+              <span style={{ fontSize: 11, color: t.text.link }}>Open</span>
+            </div>
+          ))}
+        </Phone>
+      </Step>
+
+      <Step id="P7a" title="One pass" desc="Ramesh's pass for Aarav. The parent can share it, resend the SMS, or regenerate it if a phone is lost or a screenshot was shared (the old QR stops working)." api="POST /p/sunrise/passes/{id}/resend · /regenerate">
+        <Phone url={`${BASE}/passes/4411`}>
+          <TopBar title="Pickup pass" />
+          <div style={{ display: "flex", gap: 8 }}>
+            {[
+              { label: "Student", name: AARAV.name, sub: `Class ${AARAV.cls}`, sq: true },
+              { label: "Pickup person", name: RAMESH.name, sub: RAMESH.relation, sq: false },
+            ].map((x) => (
+              <div key={x.label} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 3, border: `1px solid ${t.stroke.secondary}`, borderRadius: 10, padding: 7 }}>
+                <div style={{ fontSize: 9.5, color: t.text.tertiary }}>{x.label}</div>
+                <Avatar name={x.name} size={38} square={x.sq} />
+                <div style={{ fontSize: 11.5, fontWeight: 600, color: t.text.primary, textAlign: "center" }}>{x.name}</div>
+                <div style={{ fontSize: 10, color: t.text.secondary }}>{x.sub}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", padding: 6, border: `1px solid ${t.stroke.secondary}`, borderRadius: 12 }}>
+            <QrCode token="ramesh-aarav-pass" size={140} />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+            <Btn label="Share" kind="outline" />
+            <Btn label="Resend SMS" kind="outline" />
+          </div>
+          <Btn label="Regenerate QR" kind="link" danger />
+        </Phone>
+      </Step>
+
+      <Step id="P8" title="Pickup history" desc="Every pickup and blocked attempt for the parent's children, newest first. Filter by child." api="GET /p/sunrise/history">
+        <Phone url={`${BASE}/history`}>
+          <TopBar title="Pickup history" />
+          <div style={{ display: "flex", gap: 6 }}>
+            <Chip label="All" active />
+            <Chip label="Aarav" />
+            <Chip label="Anaya" />
+          </div>
+          {[
+            { d: "Today", items: [{ k: "Anaya", who: "Neha Shah (Mother)", time: "1:10 PM", ok: true }] },
+            {
+              d: "Yesterday",
+              items: [
+                { k: "Aarav", who: "Ramesh Patil (Driver)", time: "2:46 PM", ok: true },
+                { k: "Aarav", who: "Unknown person, blocked", time: "2:31 PM", ok: false },
+                { k: "Anaya", who: "Ramesh Patil (Driver)", time: "1:05 PM", ok: true },
+              ],
+            },
+          ].map((g) => (
+            <div key={g.d}>
+              <Label>{g.d}</Label>
+              {g.items.map((it, i) => (
+                <div key={i} style={{ display: "flex", gap: 8, padding: "6px 0", borderBottom: `1px solid ${t.stroke.tertiary}` }}>
+                  <span style={{ width: 8, height: 8, marginTop: 4, borderRadius: 4, background: it.ok ? t.category.green : t.category.red, flexShrink: 0 }} />
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 12, fontWeight: 600, color: t.text.primary }}>{it.k}</div>
+                    <div style={{ fontSize: 10.5, color: t.text.secondary }}>{it.who}</div>
+                  </div>
+                  <span style={{ fontSize: 10.5, color: t.text.tertiary }}>{it.time}</span>
+                </div>
+              ))}
+            </div>
+          ))}
+        </Phone>
+      </Step>
+
+      <Step id="P9" title="My profile" desc="Parent can update name and photo. The mobile number can only be changed by the school, because it is the login." api="POST /p/sunrise/profile · POST /p/sunrise/logout">
+        <Phone url={`${BASE}/profile`}>
+          <TopBar title="My profile" />
+          <Photo name="Rakesh Shah" has />
+          <Input label="Name" value="Rakesh Shah" />
+          <Input label="Relation" value="Father" />
+          <div>
+            <Label>Mobile (login)</Label>
+            <div style={{ fontSize: 13, color: t.text.secondary, padding: "6px 0" }}>+91 98765 00001</div>
+            <Small tone="tertiary">To change your number, contact the school office.</Small>
+          </div>
+          <Switch label="SMS when my child is picked up" on />
+          <div style={{ flex: 1 }} />
+          <Btn label="Save" />
+          <Btn label="Log out" kind="link" danger />
+        </Phone>
+      </Step>
+    </StepRow>
+  );
+}
+
+function PersonSide() {
+  const t = useHostTheme();
+  return (
+    <StepRow>
+      <Step id="PP0" title="SMS to pickup person" desc="Sent automatically when a parent adds someone, and again with Resend SMS. Says who added them and for which children." api="SendPickupPassJob">
+        <Phone sms={{ title: "SUNSCH", sub: "Sunrise School" }}>
+          <div style={{ fontSize: 10, color: t.text.tertiary, textAlign: "center" }}>Today 11:20 AM</div>
+          <div style={{ alignSelf: "flex-start", maxWidth: "90%", background: t.fill.tertiary, borderRadius: 14, padding: "9px 11px", fontSize: 12, lineHeight: "17px", color: t.text.primary }}>
+            Sunrise School: Rakesh Shah added you to pick up Aarav and Anaya. View your pickup passes:{" "}
+            <span style={{ color: t.text.link, textDecoration: "underline" }}>{BASE}</span>
+          </div>
+        </Phone>
+      </Step>
+
+      <Step id="PP1" title="Verify own mobile" desc="Same link and OTP screens as parents (P1, P3). The number is accepted because it belongs to an active pickup person." api="send-otp → role: person">
+        <Phone url={BASE}>
+          <SchoolHeader />
+          <Title>Enter OTP</Title>
+          <Small>We sent a 4-digit OTP to +91 90xxx x4471.</Small>
+          <Input value="5 8 1 0" big />
+          <Btn label="Verify" />
+        </Phone>
+      </Step>
+
+      <Step id="PP2" title="My passes" desc="Ramesh sees only his own passes, one per child, with his photo. He cannot add or change anything. If removed by the parent, this page shows no passes." api="GET /p/sunrise/my-passes">
+        <Phone url={`${BASE}/my-passes`}>
+          <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+            <Avatar name={RAMESH.name} size={34} />
+            <div>
+              <div style={{ fontSize: 13.5, fontWeight: 600, color: t.text.primary }}>{RAMESH.name}</div>
+              <div style={{ fontSize: 10.5, color: t.text.secondary }}>Driver · added by Rakesh Shah</div>
+            </div>
+          </div>
+          {[AARAV, ANAYA].map((c) => (
+            <div key={c.id} style={{ border: `1px solid ${t.stroke.secondary}`, borderRadius: 12, padding: 9, display: "flex", alignItems: "center", gap: 10 }}>
+              <QrCode token={`ramesh-${c.id}`} size={86} />
+              <div style={{ minWidth: 0 }}>
+                <div style={{ fontSize: 10, color: t.text.tertiary }}>Pass for</div>
+                <div style={{ fontSize: 13, fontWeight: 600, color: t.text.primary }}>{c.name}</div>
+                <div style={{ fontSize: 10.5, color: t.text.secondary }}>Class {c.cls}</div>
+                <div style={{ fontSize: 10.5, color: t.text.link, marginTop: 4 }}>Full screen</div>
+              </div>
+            </div>
+          ))}
+          <Small tone="tertiary">Show the pass of the child you are collecting. Each child has a different QR.</Small>
+        </Phone>
+      </Step>
+    </StepRow>
+  );
+}
+
+function Returning() {
+  const t = useHostTheme();
+  const steps = ["Open the same link", "P1 Enter mobile", "P3 OTP", "P5 Home (no profile step)", "Edit, add, remove or view QR"];
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+      {steps.map((s, i) => (
+        <div key={s} style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <div style={{ border: `1px solid ${t.stroke.secondary}`, borderRadius: 8, padding: "7px 11px", fontSize: 12, color: t.text.primary, background: i === 3 ? t.fill.tertiary : "transparent" }}>{s}</div>
+          {i < steps.length - 1 ? <span style={{ color: t.text.tertiary }}>→</span> : null}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ===================== Page ===================== */
+
+function ParentPortalFlow() {
+  return (
+    <Stack gap={30} style={{ padding: 4 }}>
+      <Stack gap={6}>
+        <H1>Parent portal: complete flow (one QR per person per child)</H1>
+        <Text tone="secondary">
+          Mobile web pages opened from the school's link. No app to install. The parent logs in with mobile + OTP, gets one profile for all their
+          children and manages who can pick up. Every pickup person gets a separate QR pass for each child they may collect. Example parent: Rakesh Shah, father of Aarav (5-B) and Anaya
+          (2-A).
+        </Text>
+      </Stack>
+
+      <Stack gap={10}>
+        <H2>Flow chart</H2>
+        <Text size="small" tone="secondary">
+          Rounded boxes are decisions. Dashed boxes are problem cases. Returning parents skip the profile step and land on Home.
+        </Text>
+        <FlowChart />
+      </Stack>
+
+      <Section title="1. First time: link to home" sub="P0 → P1 → P3 → P4 → P4b → P5. About 2 minutes for the parent.">
+        <FirstTime />
+      </Section>
+
+      <Divider />
+
+      <Section title="2. Returning parent (to change anything)" sub="Same link every time. Verified again by OTP, then straight to Home.">
+        <Returning />
+      </Section>
+
+      <Divider />
+
+      <Section title="3. Managing pickup persons" sub="Changes are effective at the gate immediately; the guard's list is read live when a QR is scanned.">
+        <ManagePersons />
+      </Section>
+
+      <Divider />
+
+      <Section title="4. Passes, history and profile" sub="One QR pass per person per child. Rakesh's family: Aarav has 4 passes, Anaya has 3.">
+        <QrAndMore />
+      </Section>
+
+      <Divider />
+
+      <Section title="5. Pickup person side" sub="Driver, grandparent or anyone added by a parent. No app needed; they only see their own passes.">
+        <PersonSide />
+      </Section>
+
+      <Divider />
+
+      <Section title="6. Problem cases" sub="What the parent sees when something goes wrong.">
+        <Problems />
+      </Section>
+
+      <Divider />
+
+      <Stack gap={10}>
+        <H2>Screen list</H2>
+        <Table
+          headers={["ID", "Screen", "Endpoint", "Notes"]}
+          rows={[
+            ["P0", "Link in WhatsApp group", "Copy link / Share on WhatsApp", "Posted manually by the school; no SMS invite"],
+            ["P1", "Enter mobile", "GET /p/{school} · POST send-otp", "10-digit validation (P1a)"],
+            ["P2", "Not registered", "send-otp → not_registered", "No OTP sent; school office contact shown"],
+            ["P3", "Enter OTP", "POST verify-otp", "Wrong (P3a), locked (P3b), expired (P3c)"],
+            ["P4", "Create profile", "POST profile", "First login only; photo required"],
+            ["P4b", "Who else can pick up", "POST persons", "Onboarding step; can skip"],
+            ["P5", "Home", "GET home", "Children + QR, who can pick up, last pickup"],
+            ["P6", "Add pickup person", "POST persons", "Photo, relation, mobile, children, end date; limit (P6c)"],
+            ["P6a", "Edit pickup person", "POST persons/{id}", "Change children, mobile, photo, end date"],
+            ["P6b", "Remove pickup person", "POST persons/{id}/remove", "Confirm; effective immediately"],
+            ["P7", "Child's passes", "GET children/{id}/passes", "One QR per person for this child"],
+            ["P7a", "Single pass", "GET passes/{id} · resend · regenerate", "Share, resend SMS, regenerate (old QR invalid)"],
+            ["PP0", "Pass SMS to person", "SendPickupPassJob", "Who added them, which children, link"],
+            ["PP2", "My passes (person)", "GET my-passes", "Person's own passes after OTP; read-only"],
+            ["P8", "Pickup history", "GET history", "Pickups and blocked attempts per child"],
+            ["P9", "My profile / log out", "POST profile · POST logout", "Mobile changed only by school"],
+            ["P10", "Session ended", "PickupParentSession", "30 min idle → verify again"],
+          ]}
+        />
+      </Stack>
+    </Stack>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<ParentPortalFlow />);
+
+</script>
+<script>
+  (function () {
+    var src = document.getElementById("app-src").textContent;
+    try {
+      var out = Babel.transform(src, {
+        filename: "app.tsx",
+        presets: [["typescript", { isTSX: true, allExtensions: true }], ["react", { runtime: "classic" }]],
+      }).code;
+      new Function(out)();
+    } catch (e) {
+      document.getElementById("root").innerHTML = '<pre style="color:#d1242f;white-space:pre-wrap">' + String(e && e.stack || e) + '</pre>';
+      console.error(e);
+    }
+  })();
+</script>
+</body>
+</html>

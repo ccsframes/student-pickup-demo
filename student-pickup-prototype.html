@@ -1,0 +1,2105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Student Pickup - Working Prototype (Guestrar)</title>
+<style>
+  body { margin: 0; background: #f6f8fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1b1f24; }
+  #wrap { max-width: 1500px; margin: 0 auto; padding: 24px; }
+  #loading { padding: 40px; text-align: center; color: #57606a; }
+  input:focus, select:focus { border-color: #106DBA !important; }
+</style>
+<script src="https://unpkg.com/react@18.3.1/umd/react.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://unpkg.com/@babel/standalone@7.25.6/babel.min.js" crossorigin></script>
+</head>
+<body>
+<div id="wrap"><div id="root"><div id="loading">Loading prototype...</div></div></div>
+<script id="app-src" type="text/plain">
+
+const { useState, useEffect } = React;
+type CSSProperties = any;
+type TextProps = { children?: any };
+
+const BRAND = "#106DBA";
+const THEME = {
+  text: { primary: "#1b1f24", secondary: "#57606a", tertiary: "#8b949e", quaternary: "#c4c9cf", link: BRAND, onAccent: "#ffffff" },
+  bg: { editor: "#ffffff", chrome: "#f3f5f7", elevated: "#ffffff" },
+  fill: { primary: "rgba(20,20,20,0.20)", secondary: "rgba(20,20,20,0.10)", tertiary: "rgba(16,109,186,0.08)", quaternary: "rgba(20,20,20,0.04)" },
+  stroke: { primary: "rgba(20,20,20,0.22)", secondary: "rgba(20,20,20,0.13)", tertiary: "rgba(20,20,20,0.07)", focused: BRAND },
+  accent: { primary: BRAND, control: BRAND, controlHover: "#0d5a9a" },
+  category: { red: "#d1242f", green: "#1a7f37", yellow: "#bf8700", blue: "#0969da", gray: "#8b949e", purple: "#8250df", cyan: "#1b7c83", pink: "#bf3989", orange: "#bc4c00" },
+};
+function useHostTheme() { return THEME; }
+
+function Stack({ children, gap = 8, style }: any) {
+  return <div style={{ display: "flex", flexDirection: "column", gap, ...style }}>{children}</div>;
+}
+function Row({ children, gap = 8, align = "center", justify = "start", wrap = false, style }: any) {
+  const m: any = { start: "flex-start", end: "flex-end", center: "center", stretch: "stretch", "space-between": "space-between" };
+  return <div style={{ display: "flex", gap, alignItems: m[align], justifyContent: m[justify], flexWrap: wrap ? "wrap" : "nowrap", ...style }}>{children}</div>;
+}
+function Grid({ children, columns, gap = 8, align, style }: any) {
+  const cols = typeof columns === "number" ? `repeat(${columns}, minmax(0, 1fr))` : columns;
+  return <div style={{ display: "grid", gridTemplateColumns: cols, gap, alignItems: align, ...style }}>{children}</div>;
+}
+function Spacer() { return <div style={{ flex: 1 }} />; }
+function Divider({ style }: any) { return <div style={{ height: 1, background: THEME.stroke.tertiary, width: "100%", ...style }} />; }
+function H1({ children, style }: any) { return <h1 style={{ fontSize: 24, lineHeight: "30px", fontWeight: 600, margin: 0, color: THEME.text.primary, ...style }}>{children}</h1>; }
+function H2({ children, style }: any) { return <h2 style={{ fontSize: 18, lineHeight: "24px", fontWeight: 600, margin: 0, color: THEME.text.primary, ...style }}>{children}</h2>; }
+function H3({ children, style }: any) { return <h3 style={{ fontSize: 16, lineHeight: "22px", fontWeight: 600, margin: 0, color: THEME.text.primary, ...style }}>{children}</h3>; }
+function Text({ children, tone = "primary", size = "body", weight = "normal", style }: any) {
+  const w: any = { normal: 400, medium: 500, semibold: 600, bold: 700 };
+  return <div style={{ margin: 0, fontSize: size === "small" ? 12 : 14, lineHeight: size === "small" ? "16px" : "20px", fontWeight: w[weight], color: (THEME.text as any)[tone], ...style }}>{children}</div>;
+}
+function Button({ children, variant = "secondary", disabled, onClick, style }: any) {
+  const base: any = { height: 28, padding: "0 12px", borderRadius: 6, fontSize: 12.5, fontWeight: 500, cursor: disabled ? "default" : "pointer", whiteSpace: "nowrap", border: "1px solid transparent", opacity: disabled ? 0.5 : 1 };
+  const v: any = {
+    primary: { background: BRAND, color: "#fff" },
+    secondary: { background: THEME.bg.editor, color: THEME.text.primary, borderColor: THEME.stroke.primary },
+    ghost: { background: "transparent", color: THEME.text.link },
+  };
+  return <button disabled={disabled} onClick={onClick} style={{ ...base, ...v[variant], ...style }}>{children}</button>;
+}
+function Pill({ children, active, size = "md", onClick, style }: any) {
+  return (
+    <span onClick={onClick} style={{ display: "inline-flex", alignItems: "center", padding: size === "sm" ? "2px 9px" : "4px 11px", borderRadius: 999, fontSize: size === "sm" ? 11 : 12, cursor: onClick ? "pointer" : "default", border: `1px solid ${active ? BRAND : THEME.stroke.secondary}`, background: active ? THEME.fill.tertiary : "transparent", color: active ? BRAND : THEME.text.secondary, fontWeight: active ? 600 : 400, ...style }}>
+      {children}
+    </span>
+  );
+}
+function Table({ headers, rows, rowTone, style }: any) {
+  const toneColor: any = { success: THEME.category.green, danger: THEME.category.red, warning: THEME.category.yellow, info: THEME.category.blue, neutral: THEME.text.tertiary };
+  return (
+    <div style={{ border: `1px solid ${THEME.stroke.secondary}`, borderRadius: 8, overflowX: "auto", ...style }}>
+      <table style={{ borderCollapse: "collapse", width: "100%", fontSize: 12.5 }}>
+        <thead>
+          <tr>{headers.map((h: any, i: number) => <th key={i} style={{ textAlign: "left", padding: "7px 10px", fontWeight: 600, color: THEME.text.secondary, borderBottom: `1px solid ${THEME.stroke.secondary}`, background: THEME.bg.chrome }}>{h}</th>)}</tr>
+        </thead>
+        <tbody>
+          {rows.map((r: any[], ri: number) => (
+            <tr key={ri}>
+              {headers.map((_: any, ci: number) => (
+                <td key={ci} style={{ padding: "7px 10px", borderTop: ri > 0 ? `1px solid ${THEME.stroke.tertiary}` : undefined, color: THEME.text.primary, verticalAlign: "middle" }}>
+                  {ci === 0 && rowTone && rowTone[ri] ? <span style={{ display: "inline-block", width: 7, height: 7, borderRadius: 4, background: toneColor[rowTone[ri]], marginRight: 7 }} /> : null}
+                  {r[ci]}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+const inputStyle: any = { height: 30, boxSizing: "border-box", width: "100%", border: `1px solid ${THEME.stroke.primary}`, borderRadius: 6, padding: "0 9px", fontSize: 13, color: THEME.text.primary, background: "#fff", outline: "none" };
+function TextInput({ value, onChange, placeholder, type = "text", style }: any) {
+  return <input type={type} value={value} placeholder={placeholder} onChange={(e: any) => onChange && onChange(e.target.value)} style={{ ...inputStyle, ...style }} />;
+}
+function Select({ value, onChange, options, style }: any) {
+  return <select value={value} onChange={(e: any) => onChange && onChange(e.target.value)} style={{ ...inputStyle, ...style }}>{options.map((o: any) => <option key={o.value} value={o.value}>{o.label}</option>)}</select>;
+}
+function Checkbox({ checked, onChange, label }: any) {
+  return (
+    <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: THEME.text.primary, padding: "3px 0", cursor: "pointer" }}>
+      <input type="checkbox" checked={!!checked} onChange={(e: any) => onChange && onChange(e.target.checked)} style={{ accentColor: BRAND }} />
+      {label}
+    </label>
+  );
+}
+function Toggle({ checked, onChange }: any) {
+  return (
+    <span onClick={() => onChange && onChange(!checked)} style={{ display: "inline-block", width: 32, height: 18, borderRadius: 9, background: checked ? BRAND : THEME.fill.secondary, position: "relative", cursor: onChange ? "pointer" : "default", flexShrink: 0 }}>
+      <span style={{ position: "absolute", top: 2, left: checked ? 16 : 2, width: 14, height: 14, borderRadius: 7, background: "#fff", transition: "left .15s" }} />
+    </span>
+  );
+}
+
+type Kids = any;
+
+
+/* ===================== Data model ===================== */
+
+type ParentRef = { name: string; mobile: string; relation: string };
+type Student = { id: string; name: string; cls: string; roll: string; token: string; parents: ParentRef[] };
+type Profile = { mobile: string; name: string; relation: string; photo: boolean };
+type PPerson = {
+  id: string;
+  name: string;
+  relation: string;
+  mobile: string;
+  photo: boolean;
+  studentIds: string[];
+  addedBy: string;
+  until?: string;
+};
+type PickupLog = { id: number; studentId: string; who: string; relation: string; time: string };
+type Activity = { id: number; time: string; who: string; text: string };
+type ReqStatus = "waiting" | "sending";
+type PickupReq = { id: number; studentId: string; name: string; relation: string; status: ReqStatus; createdAt: number };
+type RevokedPass = { token: string; studentId: string; name: string; relation: string; reason: string };
+
+type World = {
+  students: Student[];
+  profiles: Profile[];
+  persons: PPerson[];
+  invites: Record<string, boolean>;
+  pickups: PickupLog[];
+  requests: PickupReq[];
+  passVersion: Record<string, number>;
+  revoked: RevokedPass[];
+};
+
+type Actions = {
+  addStudent: (s: Omit<Student, "id" | "token">) => void;
+  sendInvites: () => void;
+  markOpened: (mobile: string) => void;
+  saveProfile: (p: Profile) => void;
+  addPerson: (p: Omit<PPerson, "id">) => void;
+  removePerson: (id: string) => void;
+  regeneratePass: (pass: Pass) => void;
+  confirmAtGate: (studentId: string, who: string, relation: string) => void;
+  markSending: (id: number) => void;
+  handOver: (id: number) => void;
+  cancelReq: (id: number, reason: string) => void;
+  log: (who: string, text: string) => void;
+};
+
+const SHAH_PARENTS: ParentRef[] = [
+  { name: "Rakesh Shah", mobile: "9876500001", relation: "Father" },
+  { name: "Neha Shah", mobile: "9876500002", relation: "Mother" },
+];
+
+function initialWorld(): World {
+  return {
+    students: [
+      { id: "s1", name: "Aarav Shah", cls: "5-B", roll: "14", token: "SP7K2M9Q", parents: SHAH_PARENTS },
+      { id: "s2", name: "Anaya Shah", cls: "2-A", roll: "03", token: "SP4H8T1W", parents: SHAH_PARENTS },
+      { id: "s3", name: "Diya Patel", cls: "3-A", roll: "07", token: "SP9R3D6L", parents: [{ name: "Kiran Patel", mobile: "9876500003", relation: "Mother" }] },
+      { id: "s4", name: "Vihaan Rao", cls: "7-C", roll: "22", token: "SP2N5B8X", parents: [{ name: "Anil Rao", mobile: "9876500004", relation: "Father" }] },
+    ],
+    profiles: [{ mobile: "9876500003", name: "Kiran Patel", relation: "Mother", photo: true }],
+    persons: [
+      { id: "pp1", name: "Mahesh Yadav", relation: "Driver", mobile: "8800030190", photo: true, studentIds: ["s3"], addedBy: "9876500003" },
+    ],
+    invites: { "9876500003": true },
+    pickups: [{ id: 1, studentId: "s3", who: "Mahesh Yadav", relation: "Driver", time: "Yesterday 1:52 PM" }],
+    requests: [{ id: 1, studentId: "s3", name: "Mahesh Yadav", relation: "Driver", status: "waiting", createdAt: Date.now() - 6 * 60000 - 15000 }],
+    passVersion: {},
+    revoked: [
+      { token: "PS-old-anil-driver-s4", studentId: "s4", name: "Raju Singh", relation: "Driver", reason: "Removed by parent" },
+    ],
+  };
+}
+
+function initialActivity(): Activity[] {
+  return [
+    { id: 2, time: "Yesterday", who: "Guard", text: "Diya Patel picked up by Mahesh Yadav (Driver)" },
+    { id: 1, time: "Mon", who: "Kiran Patel", text: "Verified OTP, created profile, added Mahesh Yadav" },
+  ];
+}
+
+const DEMO_OTP = "1234";
+
+function clock(): string {
+  return new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+function digits(m: string): string {
+  const d = m.replace(/\D/g, "");
+  return d.length > 10 ? d.slice(-10) : d;
+}
+
+function fmtMobile(m: string): string {
+  return `+91 ${m.slice(0, 5)} ${m.slice(5)}`;
+}
+
+function childrenOf(w: World, mobile: string): Student[] {
+  return w.students.filter((s) => s.parents.some((p) => p.mobile === mobile));
+}
+
+function allParentMobiles(w: World): string[] {
+  return Array.from(new Set(w.students.flatMap((s) => s.parents.map((p) => p.mobile))));
+}
+
+function parentRecord(w: World, mobile: string): ParentRef | undefined {
+  for (const s of w.students) {
+    const p = s.parents.find((x) => x.mobile === mobile);
+    if (p) return p;
+  }
+  return undefined;
+}
+
+type PickupOption = { key: string; name: string; relation: string; tag: string };
+
+function pickupListFor(w: World, studentId: string): PickupOption[] {
+  const s = w.students.find((x) => x.id === studentId);
+  if (!s) return [];
+  const parents = s.parents
+    .map((p) => w.profiles.find((pr) => pr.mobile === p.mobile))
+    .filter((p): p is Profile => Boolean(p))
+    .map((p) => ({ key: `pr-${p.mobile}`, name: p.name, relation: p.relation, tag: "Parent" }));
+  const others = w.persons
+    .filter((p) => p.studentIds.includes(studentId))
+    .map((p) => ({ key: p.id, name: p.name, relation: p.relation, tag: p.until ? `Until ${p.until}` : "Added by parent" }));
+  return [...parents, ...others];
+}
+
+type Pass = { key: string; token: string; studentId: string; holderKey: string; name: string; relation: string; tag: string; until?: string };
+
+function passKey(holderKey: string, studentId: string): string {
+  return `${holderKey}|${studentId}`;
+}
+
+function passesForStudent(w: World, studentId: string): Pass[] {
+  return pickupListFor(w, studentId).map((o) => {
+    const key = passKey(o.key, studentId);
+    const v = w.passVersion[key] ?? 1;
+    const person = w.persons.find((p) => p.id === o.key);
+    return {
+      key,
+      token: `PS-${key}-v${v}`,
+      studentId,
+      holderKey: o.key,
+      name: o.name,
+      relation: o.relation,
+      tag: o.tag,
+      until: person?.until,
+    };
+  });
+}
+
+function allPasses(w: World): Pass[] {
+  return w.students.flatMap((s) => passesForStudent(w, s.id));
+}
+
+/* ===================== Small UI pieces ===================== */
+
+function Avatar({ name, size = 36, square = false }: { name: string; size?: number; square?: boolean }) {
+  const t = useHostTheme();
+  const initials = name
+    .split(" ")
+    .map((p) => p[0])
+    .slice(0, 2)
+    .join("");
+  return (
+    <div
+      style={{
+        width: size,
+        height: size,
+        borderRadius: square ? 8 : size / 2,
+        background: t.fill.secondary,
+        color: t.text.secondary,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: Math.round(size * 0.36),
+        fontWeight: 600,
+        flexShrink: 0,
+      }}
+    >
+      {initials}
+    </div>
+  );
+}
+
+function Dot({ color }: { color: string }) {
+  return <span style={{ width: 8, height: 8, borderRadius: 4, background: color, display: "inline-block", flexShrink: 0 }} />;
+}
+
+function AppButton({
+  label,
+  kind = "primary",
+  disabled = false,
+  onClick,
+}: {
+  label: string;
+  kind?: "primary" | "outline";
+  disabled?: boolean;
+  onClick?: () => void;
+}) {
+  const t = useHostTheme();
+  const primary = kind === "primary";
+  return (
+    <div
+      onClick={disabled ? undefined : onClick}
+      style={{
+        height: 36,
+        flexShrink: 0,
+        boxSizing: "border-box",
+        borderRadius: 10,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        fontSize: 13,
+        fontWeight: 600,
+        cursor: disabled || !onClick ? "default" : "pointer",
+        background: disabled ? t.fill.secondary : primary ? t.accent.primary : "transparent",
+        color: disabled ? t.text.tertiary : primary ? t.text.onAccent : t.text.primary,
+        border: primary && !disabled ? "none" : `1px solid ${t.stroke.primary}`,
+      }}
+    >
+      {label}
+    </div>
+  );
+}
+
+function Label({ children }: { children?: Kids }) {
+  const t = useHostTheme();
+  return <div style={{ fontSize: 11, fontWeight: 600, color: t.text.secondary, marginBottom: 4 }}>{children}</div>;
+}
+
+function Small({ children, tone = "secondary", style }: { children?: Kids; tone?: "secondary" | "tertiary" | "red"; style?: CSSProperties }) {
+  const t = useHostTheme();
+  const color = tone === "red" ? t.category.red : tone === "tertiary" ? t.text.tertiary : t.text.secondary;
+  return <div style={{ fontSize: 11.5, lineHeight: "16px", color, ...style }}>{children}</div>;
+}
+
+function Chip({ label, active, onClick }: { label: string; active: boolean; onClick?: () => void }) {
+  const t = useHostTheme();
+  return (
+    <span
+      onClick={onClick}
+      style={{
+        fontSize: 11,
+        padding: "4px 9px",
+        borderRadius: 12,
+        cursor: onClick ? "pointer" : "default",
+        border: `1px solid ${active ? t.accent.primary : t.stroke.primary}`,
+        background: active ? t.fill.tertiary : "transparent",
+        color: active ? t.accent.primary : t.text.secondary,
+        fontWeight: active ? 600 : 400,
+      }}
+    >
+      {label}
+    </span>
+  );
+}
+
+function ResultIcon({ ok }: { ok: boolean }) {
+  const t = useHostTheme();
+  const color = ok ? t.category.green : t.category.red;
+  return (
+    <div style={{ display: "flex", justifyContent: "center", padding: "6px 0" }}>
+      <div
+        style={{
+          width: 46,
+          height: 46,
+          borderRadius: 23,
+          border: `2px solid ${color}`,
+          color,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          fontSize: 22,
+          fontWeight: 700,
+        }}
+      >
+        {ok ? "✓" : "!"}
+      </div>
+    </div>
+  );
+}
+
+function PhotoPicker({ has, name, onToggle }: { has: boolean; name: string; onToggle: () => void }) {
+  const t = useHostTheme();
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+      <div onClick={onToggle} style={{ cursor: "pointer" }}>
+        {has ? (
+          <Avatar name={name || "?"} size={60} />
+        ) : (
+          <div
+            style={{
+              width: 60,
+              height: 60,
+              borderRadius: 30,
+              border: `1.5px dashed ${t.stroke.primary}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              fontSize: 10,
+              color: t.text.tertiary,
+              textAlign: "center",
+            }}
+          >
+            Add photo
+          </div>
+        )}
+      </div>
+      <Small tone="tertiary">{has ? "Photo added (tap to change)" : "Tap to take photo"}</Small>
+    </div>
+  );
+}
+
+function QrCode({ token, size = 120 }: { token: string; size?: number }) {
+  const t = useHostTheme();
+  const n = 21;
+  let h = 7;
+  for (const ch of token) h = (Math.imul(h, 31) + ch.charCodeAt(0)) >>> 0;
+  if (h === 0) h = 1;
+  const rand = () => {
+    h ^= h << 13;
+    h >>>= 0;
+    h ^= h >>> 17;
+    h ^= h << 5;
+    h >>>= 0;
+    return h / 4294967296;
+  };
+  const finder = (r: number, c: number): boolean | undefined => {
+    for (const [or, oc] of [
+      [0, 0],
+      [0, n - 7],
+      [n - 7, 0],
+    ]) {
+      const inZone = r >= or - 1 && r <= or + 7 && c >= oc - 1 && c <= oc + 7;
+      if (!inZone) continue;
+      const rr = r - or;
+      const cc = c - oc;
+      if (rr < 0 || rr > 6 || cc < 0 || cc > 6) return false;
+      return rr === 0 || rr === 6 || cc === 0 || cc === 6 || (rr >= 2 && rr <= 4 && cc >= 2 && cc <= 4);
+    }
+    return undefined;
+  };
+  const cells: Array<[number, number]> = [];
+  for (let r = 0; r < n; r++) {
+    for (let c = 0; c < n; c++) {
+      const f = finder(r, c);
+      const on = f === undefined ? rand() > 0.52 : f;
+      if (on) cells.push([r, c]);
+    }
+  }
+  return (
+    <svg width={size} height={size} viewBox={`-1 -1 ${n + 2} ${n + 2}`} style={{ display: "block" }}>
+      <rect x={-1} y={-1} width={n + 2} height={n + 2} fill={t.bg.editor} />
+      {cells.map(([r, c]) => (
+        <rect key={`${r}-${c}`} x={c} y={r} width={1.02} height={1.02} fill={t.text.primary} />
+      ))}
+    </svg>
+  );
+}
+
+/* ===================== Device frames ===================== */
+
+function Phone({
+  variant,
+  title,
+  sub,
+  url,
+  children,
+}: {
+  variant: "app" | "browser" | "sms";
+  title?: string;
+  sub?: string;
+  url?: string;
+  children?: Kids;
+}) {
+  const t = useHostTheme();
+  const isApp = variant === "app";
+  return (
+    <div
+      style={{
+        width: 290,
+        flexShrink: 0,
+        boxSizing: "border-box",
+        border: `1px solid ${t.stroke.primary}`,
+        borderRadius: 28,
+        padding: 7,
+        background: t.bg.chrome,
+      }}
+    >
+      <div
+        style={{
+          height: 560,
+          borderRadius: 21,
+          background: t.bg.editor,
+          border: `1px solid ${t.stroke.tertiary}`,
+          overflow: "hidden",
+          display: "flex",
+          flexDirection: "column",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            padding: "6px 16px 3px",
+            fontSize: 10,
+            background: isApp ? t.accent.primary : t.bg.chrome,
+            color: isApp ? t.text.onAccent : t.text.tertiary,
+          }}
+        >
+          <span>2:45</span>
+          <span>5G</span>
+        </div>
+        {variant === "app" ? (
+          <div style={{ background: t.accent.primary, color: t.text.onAccent, padding: "4px 12px 10px" }}>
+            <div style={{ fontSize: 13, fontWeight: 600 }}>{title}</div>
+            {sub ? <div style={{ fontSize: 10, opacity: 0.85 }}>{sub}</div> : null}
+          </div>
+        ) : null}
+        {variant === "browser" ? (
+          <div style={{ background: t.bg.chrome, padding: "2px 10px 8px", borderBottom: `1px solid ${t.stroke.tertiary}` }}>
+            <div
+              style={{
+                background: t.fill.tertiary,
+                borderRadius: 8,
+                padding: "5px 10px",
+                fontSize: 11,
+                color: t.text.secondary,
+                textAlign: "center",
+              }}
+            >
+              {url}
+            </div>
+          </div>
+        ) : null}
+        {variant === "sms" ? (
+          <div style={{ background: t.bg.chrome, padding: "4px 12px 10px", borderBottom: `1px solid ${t.stroke.tertiary}`, textAlign: "center" }}>
+            <div style={{ fontSize: 13, fontWeight: 600, color: t.text.primary }}>{title}</div>
+            {sub ? <div style={{ fontSize: 10, color: t.text.tertiary }}>{sub}</div> : null}
+          </div>
+        ) : null}
+        <div style={{ flex: 1, overflowY: "auto", padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>{children}</div>
+      </div>
+    </div>
+  );
+}
+
+function SchoolHeader() {
+  const t = useHostTheme();
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 10, paddingBottom: 8, borderBottom: `1px solid ${t.stroke.tertiary}` }}>
+      <Avatar name="Sunrise School" size={36} square />
+      <div>
+        <div style={{ fontSize: 13, fontWeight: 600, color: t.text.primary }}>Sunrise School</div>
+        <div style={{ fontSize: 10, color: t.text.secondary }}>Safe pickup · Parent portal</div>
+      </div>
+    </div>
+  );
+}
+
+/* ===================== Admin web ===================== */
+
+type AdminTab = "students" | "add" | "qr" | "history";
+
+function AdminWeb({ world, actions, tab, setTab }: { world: World; actions: Actions; tab: AdminTab; setTab: (t: AdminTab) => void }) {
+  const t = useHostTheme();
+  const nav: Array<[AdminTab, string]> = [
+    ["students", "Students"],
+    ["add", "Add student"],
+    ["qr", "Passes"],
+    ["history", "Pickup history"],
+  ];
+  return (
+    <div style={{ border: `1px solid ${t.stroke.primary}`, borderRadius: 12, overflow: "hidden", background: t.bg.chrome }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "8px 12px", borderBottom: `1px solid ${t.stroke.tertiary}` }}>
+        {[0, 1, 2].map((i) => (
+          <span key={i} style={{ width: 9, height: 9, borderRadius: 5, background: t.fill.secondary }} />
+        ))}
+        <div
+          style={{
+            marginLeft: 10,
+            flex: 1,
+            background: t.fill.tertiary,
+            borderRadius: 6,
+            padding: "4px 10px",
+            fontSize: 11,
+            color: t.text.secondary,
+          }}
+        >
+          members.guestrar.com/school/{tab === "students" ? "students" : tab === "add" ? "students/add" : tab === "qr" ? "passes" : "pickups"}
+        </div>
+      </div>
+      <div style={{ display: "flex", height: 520, background: t.bg.editor }}>
+        <div style={{ width: 160, borderRight: `1px solid ${t.stroke.tertiary}`, padding: 12, display: "flex", flexDirection: "column", gap: 2 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: t.text.primary, marginBottom: 2 }}>Sunrise School</div>
+          <div style={{ fontSize: 10, color: t.text.tertiary, marginBottom: 10 }}>School admin</div>
+          {nav.map(([id, label]) => (
+            <div
+              key={id}
+              onClick={() => setTab(id)}
+              style={{
+                fontSize: 12,
+                padding: "7px 8px",
+                borderRadius: 6,
+                cursor: "pointer",
+                background: tab === id ? t.fill.tertiary : "transparent",
+                color: tab === id ? t.text.primary : t.text.secondary,
+                fontWeight: tab === id ? 600 : 400,
+              }}
+            >
+              {label}
+            </div>
+          ))}
+          <div style={{ fontSize: 12, padding: "7px 8px", color: t.text.tertiary }}>Settings</div>
+        </div>
+        <div style={{ flex: 1, minWidth: 0, overflowY: "auto", padding: 16 }}>
+          {tab === "students" ? <AdminStudents world={world} actions={actions} setTab={setTab} /> : null}
+          {tab === "add" ? <AdminAddStudent actions={actions} setTab={setTab} /> : null}
+          {tab === "qr" ? <AdminQr world={world} /> : null}
+          {tab === "history" ? <AdminHistory world={world} /> : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AdminStudents({ world, actions, setTab }: { world: World; actions: Actions; setTab: (t: AdminTab) => void }) {
+  const t = useHostTheme();
+  const rows = world.students.map((s) => {
+    const verified = s.parents.some((p) => world.profiles.some((pr) => pr.mobile === p.mobile));
+    const opened = s.parents.some((p) => world.invites[p.mobile]);
+    const count = pickupListFor(world, s.id).length;
+    const status = verified ? (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <Dot color={t.category.green} /> Set up · {count} {count === 1 ? "pass" : "passes"}
+      </span>
+    ) : opened ? (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <Dot color={t.category.yellow} /> OTP verified, profile pending
+      </span>
+    ) : (
+      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <Dot color={t.text.quaternary} /> Not set up yet
+      </span>
+    );
+    return [
+      <span key="n">
+        <span style={{ fontWeight: 600 }}>{s.name}</span>
+        <span style={{ color: t.text.tertiary }}> · Roll {s.roll}</span>
+      </span>,
+      s.cls,
+      <span key="p" style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+        {s.parents.map((p) => (
+          <span key={p.mobile} style={{ fontSize: 11.5 }}>
+            {p.name} ({p.relation}) · {fmtMobile(p.mobile)}
+          </span>
+        ))}
+      </span>,
+      status,
+      <Button key="q" variant="ghost" onClick={() => setTab("qr")}>
+        Passes
+      </Button>,
+    ];
+  });
+
+  return (
+    <Stack gap={12}>
+      <Row align="center" gap={8}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: t.text.primary }}>Students ({world.students.length})</div>
+        <Spacer />
+        <Button variant="secondary">Import CSV</Button>
+        <Button variant="secondary" onClick={() => setTab("add")}>
+          Add student
+        </Button>
+      </Row>
+      <div
+        style={{
+          border: `1px solid ${t.stroke.secondary}`,
+          borderRadius: 10,
+          padding: 12,
+          display: "flex",
+          alignItems: "center",
+          gap: 12,
+          flexWrap: "wrap",
+        }}
+      >
+        <div style={{ flex: 1, minWidth: 240 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: t.text.primary }}>Parent link</div>
+          <div style={{ fontSize: 12, color: t.text.secondary, marginTop: 2 }}>
+            Share this in your class WhatsApp groups. No SMS is sent by the system. Only parents whose mobile is in the list below can log in.
+          </div>
+          <div
+            style={{
+              marginTop: 8,
+              display: "inline-block",
+              fontFamily: "monospace",
+              fontSize: 12.5,
+              padding: "5px 10px",
+              borderRadius: 6,
+              background: t.fill.tertiary,
+              color: t.text.primary,
+            }}
+          >
+            https://guestrar.com/p/sunrise
+          </div>
+        </div>
+        <Button variant="secondary" onClick={() => actions.log("School admin", "Copied the parent link")}>
+          Copy link
+        </Button>
+        <Button variant="primary" onClick={actions.sendInvites}>
+          Share on WhatsApp
+        </Button>
+      </div>
+      <Table headers={["Student", "Class", "Parents (from school records)", "Pickup setup", ""]} rows={rows} />
+      <Text size="small" tone="tertiary">
+        Aarav and Anaya have the same parent mobiles, so their parents verify once and manage both children from one profile.
+      </Text>
+    </Stack>
+  );
+}
+
+function AdminAddStudent({ actions, setTab }: { actions: Actions; setTab: (t: AdminTab) => void }) {
+  const t = useHostTheme();
+  const [name, setName] = useState("");
+  const [cls, setCls] = useState("");
+  const [roll, setRoll] = useState("");
+  const [p1, setP1] = useState({ name: "", mobile: "", relation: "Father" });
+  const [p2, setP2] = useState({ name: "", mobile: "", relation: "Mother" });
+  const [err, setErr] = useState("");
+  const rel = [
+    { value: "Father", label: "Father" },
+    { value: "Mother", label: "Mother" },
+    { value: "Guardian", label: "Guardian" },
+  ];
+
+  const save = () => {
+    if (!name.trim() || !cls.trim()) return setErr("Student name and class are required.");
+    if (!p1.name.trim() || digits(p1.mobile).length !== 10) return setErr("Parent 1 name and a 10-digit mobile are required.");
+    if (p2.mobile && digits(p2.mobile).length !== 10) return setErr("Parent 2 mobile must be 10 digits.");
+    const parents: ParentRef[] = [{ name: p1.name.trim(), mobile: digits(p1.mobile), relation: p1.relation }];
+    if (p2.name.trim() && p2.mobile) parents.push({ name: p2.name.trim(), mobile: digits(p2.mobile), relation: p2.relation });
+    actions.addStudent({ name: name.trim(), cls: cls.trim(), roll: roll.trim() || "-", parents });
+    setTab("students");
+  };
+
+  return (
+    <Stack gap={14}>
+      <div style={{ fontSize: 15, fontWeight: 600, color: t.text.primary }}>Add student</div>
+      <Grid columns="2fr 1fr 1fr" gap={10}>
+        <div>
+          <Label>Student name</Label>
+          <TextInput value={name} onChange={setName} placeholder="e.g. Riya Mehta" />
+        </div>
+        <div>
+          <Label>Class</Label>
+          <TextInput value={cls} onChange={setCls} placeholder="4-C" />
+        </div>
+        <div>
+          <Label>Roll no.</Label>
+          <TextInput value={roll} onChange={setRoll} placeholder="18" />
+        </div>
+      </Grid>
+      {[
+        { title: "Parent 1 (required)", v: p1, set: setP1 },
+        { title: "Parent 2 (optional)", v: p2, set: setP2 },
+      ].map((block) => (
+        <div key={block.title}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: t.text.primary, marginBottom: 6 }}>{block.title}</div>
+          <Grid columns="2fr 1fr 1.5fr" gap={10}>
+            <div>
+              <Label>Name</Label>
+              <TextInput value={block.v.name} onChange={(v) => block.set({ ...block.v, name: v })} placeholder="Full name" />
+            </div>
+            <div>
+              <Label>Relation</Label>
+              <Select value={block.v.relation} onChange={(v) => block.set({ ...block.v, relation: v })} options={rel} />
+            </div>
+            <div>
+              <Label>Mobile</Label>
+              <TextInput value={block.v.mobile} onChange={(v) => block.set({ ...block.v, mobile: v })} placeholder="10-digit mobile" />
+            </div>
+          </Grid>
+        </div>
+      ))}
+      {err ? <Small tone="red">{err}</Small> : null}
+      <Row gap={8}>
+        <Button variant="primary" onClick={save}>
+          Save student
+        </Button>
+        <Button variant="ghost" onClick={() => setTab("students")}>
+          Cancel
+        </Button>
+      </Row>
+      <Text size="small" tone="tertiary">
+        For many students use Import CSV with columns: name, class, roll, parent1_name, parent1_relation, parent1_mobile, parent2_name,
+        parent2_relation, parent2_mobile. QR passes are created when parents verify and add pickup persons.
+      </Text>
+    </Stack>
+  );
+}
+
+function AdminQr({ world }: { world: World }) {
+  const t = useHostTheme();
+  const classes = ["All", ...Array.from(new Set(world.students.map((s) => s.cls)))];
+  const [cls, setCls] = useState("All");
+  const list = world.students.filter((s) => cls === "All" || s.cls === cls);
+  const rows: Array<Array<Kids>> = [];
+  const tones: Array<"success" | "neutral" | undefined> = [];
+  for (const s of list) {
+    for (const p of passesForStudent(world, s.id)) {
+      rows.push([
+        <span key="q" style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <QrCode token={p.token} size={26} />
+          <span style={{ fontWeight: 600 }}>{s.name}</span>
+          <span style={{ color: t.text.tertiary }}>{s.cls}</span>
+        </span>,
+        `${p.name} (${p.relation})`,
+        p.until ? `Until ${p.until}` : "No end date",
+        "Active",
+        <Button key="pr" variant="ghost">
+          Print
+        </Button>,
+      ]);
+      tones.push("success");
+    }
+    for (const r of world.revoked.filter((x) => x.studentId === s.id)) {
+      rows.push([
+        <span key="q" style={{ display: "inline-flex", alignItems: "center", gap: 8, opacity: 0.55 }}>
+          <QrCode token={r.token} size={26} />
+          <span style={{ fontWeight: 600 }}>{s.name}</span>
+          <span style={{ color: t.text.tertiary }}>{s.cls}</span>
+        </span>,
+        `${r.name} (${r.relation})`,
+        "-",
+        `Revoked: ${r.reason}`,
+        "",
+      ]);
+      tones.push("neutral");
+    }
+  }
+  return (
+    <Stack gap={12}>
+      <Row align="center" gap={8}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: t.text.primary }}>Pickup passes</div>
+        <Spacer />
+        <Button variant="secondary">Download PDF</Button>
+      </Row>
+      <Row gap={6}>
+        {classes.map((c) => (
+          <Pill key={c} size="sm" active={c === cls} onClick={() => setCls(c)}>
+            {c}
+          </Pill>
+        ))}
+      </Row>
+      <Table headers={["Student", "Pass holder", "Valid", "Status", ""]} rows={rows} rowTone={tones} />
+      <Text size="small" tone="tertiary">
+        One pass per pickup person per student, created by the parents. The school can revoke a pass or print it for someone without a
+        smartphone.
+      </Text>
+    </Stack>
+  );
+}
+
+function AdminHistory({ world }: { world: World }) {
+  const t = useHostTheme();
+  const rows = [...world.pickups].reverse().map((p) => {
+    const s = world.students.find((x) => x.id === p.studentId);
+    return [p.time, s ? `${s.name} (${s.cls})` : "-", `${p.who} (${p.relation})`, "Gate 1 · Security"];
+  });
+  return (
+    <Stack gap={12}>
+      <div style={{ fontSize: 15, fontWeight: 600, color: t.text.primary }}>Pickup history</div>
+      <Table headers={["Time", "Student", "Picked up by", "Recorded by"]} rows={rows} />
+    </Stack>
+  );
+}
+
+/* ===================== Parent web portal ===================== */
+
+type ParentScreen = "sms" | "mobile" | "notreg" | "otp" | "profile" | "home" | "add" | "qr";
+
+const PERSON_RELATIONS = ["Driver", "Grandparent", "Uncle / Aunt", "Neighbour", "Other"];
+
+function ParentPortal({
+  world,
+  actions,
+  screen,
+  setScreen,
+  mobile,
+  setMobile,
+  qrId,
+  setQrId,
+}: {
+  world: World;
+  actions: Actions;
+  screen: ParentScreen;
+  setScreen: (s: ParentScreen) => void;
+  mobile: string | null;
+  setMobile: (m: string | null) => void;
+  qrId: string;
+  setQrId: (id: string) => void;
+}) {
+  const t = useHostTheme();
+  const [mobileInput, setMobileInput] = useState("9876500001");
+  const [otp, setOtp] = useState("");
+  const [otpErr, setOtpErr] = useState("");
+  const [triedMobile, setTriedMobile] = useState("");
+  const [pName, setPName] = useState("");
+  const [pRel, setPRel] = useState("Father");
+  const [pPhoto, setPPhoto] = useState(false);
+  const [aName, setAName] = useState("");
+  const [aRel, setARel] = useState("Driver");
+  const [aMobile, setAMobile] = useState("");
+  const [aPhoto, setAPhoto] = useState(false);
+  const [aKids, setAKids] = useState<string[]>([]);
+  const [aTemp, setATemp] = useState(false);
+  const [aErr, setAErr] = useState("");
+  const [selHolder, setSelHolder] = useState("");
+
+  const kids = mobile ? childrenOf(world, mobile) : [];
+  const me = mobile ? world.profiles.find((p) => p.mobile === mobile) : undefined;
+
+  useEffect(() => {
+    if (screen === "profile" && mobile) {
+      const rec = parentRecord(world, mobile);
+      setPName(rec?.name ?? "");
+      setPRel(rec?.relation ?? "Father");
+      setPPhoto(false);
+    }
+    if (screen === "add" && mobile) {
+      setAName("");
+      setARel("Driver");
+      setAMobile("");
+      setAPhoto(false);
+      setATemp(false);
+      setAErr("");
+      setAKids(childrenOf(world, mobile).map((k) => k.id));
+    }
+    if (screen === "otp") {
+      setOtp("");
+      setOtpErr("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [screen]);
+
+  const url = screen === "mobile" || screen === "notreg" || screen === "otp" ? "guestrar.com/p/sunrise" : "guestrar.com/p/sunrise/home";
+
+  if (screen === "sms") {
+    return (
+      <Phone variant="sms" title="Class 5-B Parents" sub="WhatsApp group · 42 members">
+        <div style={{ fontSize: 10, color: t.text.tertiary, textAlign: "center" }}>Today 10:02 AM</div>
+        <div
+          style={{
+            alignSelf: "flex-start",
+            maxWidth: "90%",
+            background: t.fill.tertiary,
+            borderRadius: 14,
+            padding: "8px 11px",
+            fontSize: 12.5,
+            lineHeight: "18px",
+            color: t.text.primary,
+          }}
+        >
+          <div style={{ fontSize: 11, fontWeight: 600, color: t.accent.primary, marginBottom: 2 }}>Sunrise School Office</div>
+          Dear Parents, from Monday children will be handed over only to people with a pickup QR pass. Please open this link, verify your
+          mobile (the one you gave the school) and add who can pick up your child:{" "}
+          <span onClick={() => setScreen("mobile")} style={{ color: t.text.link, textDecoration: "underline", cursor: "pointer" }}>
+            https://guestrar.com/p/sunrise
+          </span>
+        </div>
+        <Small tone="tertiary" style={{ textAlign: "center", marginTop: 6 }}>
+          Posted manually by the school in each class group. No SMS invite. Tap the link.
+        </Small>
+      </Phone>
+    );
+  }
+
+  if (screen === "mobile") {
+    const submit = () => {
+      const m = digits(mobileInput);
+      setTriedMobile(m);
+      if (m.length !== 10) return;
+      if (allParentMobiles(world).includes(m)) {
+        setMobile(m);
+        actions.log(parentRecord(world, m)?.name ?? m, `Requested OTP on ${fmtMobile(m)}`);
+        setScreen("otp");
+      } else {
+        actions.log("Unknown", `OTP refused: ${fmtMobile(m)} is not in school records`);
+        setScreen("notreg");
+      }
+    };
+    return (
+      <Phone variant="browser" url={url}>
+        <SchoolHeader />
+        <div style={{ fontSize: 15, fontWeight: 600, color: t.text.primary }}>Verify your mobile</div>
+        <Small>Use the mobile number you gave the school at admission.</Small>
+        <div>
+          <Label>Mobile number</Label>
+          <TextInput value={mobileInput} onChange={setMobileInput} placeholder="10-digit mobile" />
+        </div>
+        {triedMobile && digits(mobileInput).length !== 10 ? <Small tone="red">Enter a 10-digit mobile number.</Small> : null}
+        <AppButton label="Send OTP" onClick={submit} />
+        <div style={{ flex: 1 }} />
+        <Small tone="tertiary">Try 9876500001 (2 children), 9876500003 (already set up) or 9999999999 (not registered).</Small>
+      </Phone>
+    );
+  }
+
+  if (screen === "notreg") {
+    return (
+      <Phone variant="browser" url={url}>
+        <SchoolHeader />
+        <ResultIcon ok={false} />
+        <div style={{ fontSize: 15, fontWeight: 600, color: t.text.primary, textAlign: "center" }}>Number not registered</div>
+        <Small style={{ textAlign: "center" }}>
+          {fmtMobile(triedMobile || "9999999999")} is not linked to any student at Sunrise School. Please contact the school office to update your
+          number.
+        </Small>
+        <div style={{ flex: 1 }} />
+        <AppButton label="Try another number" onClick={() => setScreen("mobile")} />
+        <AppButton label="Call school office" kind="outline" />
+      </Phone>
+    );
+  }
+
+  if (screen === "otp" && mobile) {
+    const verify = () => {
+      if (otp.trim() !== DEMO_OTP) {
+        setOtpErr("Wrong OTP. 4 attempts left.");
+        return;
+      }
+      const has = world.profiles.some((p) => p.mobile === mobile);
+      actions.log(parentRecord(world, mobile)?.name ?? mobile, "Verified OTP");
+      actions.markOpened(mobile);
+      setScreen(has ? "home" : "profile");
+    };
+    return (
+      <Phone variant="browser" url={url}>
+        <SchoolHeader />
+        <div style={{ fontSize: 15, fontWeight: 600, color: t.text.primary }}>Enter OTP</div>
+        <Small>We sent a 4-digit OTP to {fmtMobile(mobile)}. It is valid for 5 minutes.</Small>
+        <TextInput value={otp} onChange={setOtp} placeholder="4-digit OTP" />
+        {otpErr ? <Small tone="red">{otpErr}</Small> : null}
+        <AppButton label="Verify" onClick={verify} />
+        <Small tone="tertiary">Resend OTP in 0:30 · Change number</Small>
+        <div style={{ flex: 1 }} />
+        <Small tone="tertiary">Demo OTP: {DEMO_OTP}</Small>
+      </Phone>
+    );
+  }
+
+  if (screen === "profile" && mobile) {
+    const save = () => {
+      if (!pName.trim()) return;
+      actions.saveProfile({ mobile, name: pName.trim(), relation: pRel, photo: pPhoto });
+      setScreen("home");
+    };
+    return (
+      <Phone variant="browser" url={url}>
+        <div style={{ fontSize: 15, fontWeight: 600, color: t.text.primary }}>Create your profile</div>
+        <Small>The guard sees your photo when you come to pick up.</Small>
+        <PhotoPicker has={pPhoto} name={pName} onToggle={() => setPPhoto(!pPhoto)} />
+        <div>
+          <Label>Your name</Label>
+          <TextInput value={pName} onChange={setPName} />
+        </div>
+        <div>
+          <Label>Relation</Label>
+          <div style={{ display: "flex", gap: 6 }}>
+            {["Father", "Mother", "Guardian"].map((r) => (
+              <Chip key={r} label={r} active={pRel === r} onClick={() => setPRel(r)} />
+            ))}
+          </div>
+        </div>
+        <div style={{ border: `1px solid ${t.stroke.secondary}`, borderRadius: 10, padding: 10 }}>
+          <Label>Children linked to {fmtMobile(mobile)}</Label>
+          {kids.map((k) => (
+            <div key={k.id} style={{ fontSize: 12.5, color: t.text.primary, padding: "2px 0" }}>
+              {k.name} · Class {k.cls}
+            </div>
+          ))}
+        </div>
+        <div style={{ flex: 1 }} />
+        <AppButton label="Save and continue" disabled={!pName.trim() || !pPhoto} onClick={save} />
+        {!pPhoto ? <Small tone="tertiary">A photo is required.</Small> : null}
+      </Phone>
+    );
+  }
+
+  if (screen === "home" && mobile) {
+    const kidIds = kids.map((k) => k.id);
+    const coParents = Array.from(new Set(kids.flatMap((k) => k.parents.map((p) => p.mobile))))
+      .filter((m) => m !== mobile)
+      .map((m) => world.profiles.find((p) => p.mobile === m))
+      .filter((p): p is Profile => Boolean(p));
+    const myPersons = world.persons.filter((p) => p.studentIds.some((id) => kidIds.includes(id)));
+    const kidNames = (ids: string[]) =>
+      kids
+        .filter((k) => ids.includes(k.id))
+        .map((k) => k.name.split(" ")[0])
+        .join(", ");
+
+    return (
+      <Phone variant="browser" url={url}>
+        <Row align="center">
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: t.text.primary }}>Hello, {me?.name.split(" ")[0] ?? "Parent"}</div>
+            <div style={{ fontSize: 10.5, color: t.text.secondary }}>Sunrise School</div>
+          </div>
+          <Spacer />
+          <span
+            onClick={() => {
+              setMobile(null);
+              setScreen("mobile");
+            }}
+            style={{ fontSize: 11, color: t.text.link, cursor: "pointer" }}
+          >
+            Log out
+          </span>
+        </Row>
+
+        <Label>Your children</Label>
+        {kids.map((k) => (
+          <div key={k.id} style={{ display: "flex", alignItems: "center", gap: 10, border: `1px solid ${t.stroke.secondary}`, borderRadius: 10, padding: 8 }}>
+            <Avatar name={k.name} size={36} square />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 13, fontWeight: 600, color: t.text.primary }}>{k.name}</div>
+              <div style={{ fontSize: 10.5, color: t.text.secondary }}>Class {k.cls}</div>
+            </div>
+            <Button
+              variant="secondary"
+              onClick={() => {
+                setQrId(k.id);
+                setScreen("qr");
+              }}
+            >
+              Passes ({passesForStudent(world, k.id).length})
+            </Button>
+          </div>
+        ))}
+
+        <Label>Who can pick up</Label>
+        {me ? (
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Avatar name={me.name} size={32} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text.primary }}>{me.name} (you)</div>
+              <div style={{ fontSize: 10.5, color: t.text.secondary }}>{me.relation} · all children</div>
+            </div>
+          </div>
+        ) : null}
+        {coParents.map((p) => (
+          <div key={p.mobile} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Avatar name={p.name} size={32} />
+            <div style={{ flex: 1 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text.primary }}>{p.name}</div>
+              <div style={{ fontSize: 10.5, color: t.text.secondary }}>{p.relation} · verified separately</div>
+            </div>
+          </div>
+        ))}
+        {myPersons.map((p) => (
+          <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <Avatar name={p.name} size={32} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text.primary }}>{p.name}</div>
+              <div style={{ fontSize: 10.5, color: t.text.secondary }}>
+                {p.relation} · {kidNames(p.studentIds)}
+                {p.until ? ` · until ${p.until}` : ""}
+              </div>
+            </div>
+            <span onClick={() => actions.removePerson(p.id)} style={{ fontSize: 11, color: t.category.red, cursor: "pointer" }}>
+              Remove
+            </span>
+          </div>
+        ))}
+        <AppButton label="Add pickup person" onClick={() => setScreen("add")} />
+        <Small tone="tertiary">Changes apply at the school gate immediately. To change anything later, open the same link and verify again.</Small>
+      </Phone>
+    );
+  }
+
+  if (screen === "add" && mobile) {
+    const save = () => {
+      if (!aName.trim()) return setAErr("Enter a name.");
+      if (digits(aMobile).length !== 10) return setAErr("Enter a 10-digit mobile.");
+      if (!aPhoto) return setAErr("A photo is required so the guard can recognise them.");
+      if (aKids.length === 0) return setAErr("Select at least one child.");
+      actions.addPerson({
+        name: aName.trim(),
+        relation: aRel,
+        mobile: digits(aMobile),
+        photo: true,
+        studentIds: aKids,
+        addedBy: mobile,
+        until: aTemp ? "31 Oct" : undefined,
+      });
+      setScreen("home");
+    };
+    return (
+      <Phone variant="browser" url="guestrar.com/p/sunrise/add-person">
+        <div style={{ fontSize: 15, fontWeight: 600, color: t.text.primary }}>Add pickup person</div>
+        <PhotoPicker has={aPhoto} name={aName} onToggle={() => setAPhoto(!aPhoto)} />
+        <div>
+          <Label>Name</Label>
+          <TextInput value={aName} onChange={setAName} placeholder="e.g. Ramesh Patil" />
+        </div>
+        <div>
+          <Label>Relation</Label>
+          <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+            {PERSON_RELATIONS.map((r) => (
+              <Chip key={r} label={r} active={aRel === r} onClick={() => setARel(r)} />
+            ))}
+          </div>
+        </div>
+        <div>
+          <Label>Mobile</Label>
+          <TextInput value={aMobile} onChange={setAMobile} placeholder="10-digit mobile" />
+        </div>
+        <div>
+          <Label>Can pick up</Label>
+          {kids.map((k) => (
+            <Checkbox
+              key={k.id}
+              checked={aKids.includes(k.id)}
+              onChange={(v) => setAKids(v ? [...aKids, k.id] : aKids.filter((x) => x !== k.id))}
+              label={`${k.name} (${k.cls})`}
+            />
+          ))}
+        </div>
+        <div style={{ display: "flex", alignItems: "center", fontSize: 12, color: t.text.primary }}>
+          Only until 31 Oct
+          <span style={{ flex: 1 }} />
+          <Toggle checked={aTemp} onChange={setATemp} />
+        </div>
+        {aErr ? <Small tone="red">{aErr}</Small> : null}
+        <AppButton label="Save" onClick={save} />
+        <AppButton label="Cancel" kind="outline" onClick={() => setScreen("home")} />
+      </Phone>
+    );
+  }
+
+  if (screen === "qr" && mobile) {
+    const kid = kids.find((k) => k.id === qrId) ?? kids[0];
+    if (!kid) return null;
+    const passes = passesForStudent(world, kid.id);
+    const sel = passes.find((p) => p.holderKey === selHolder) ?? passes[0];
+    return (
+      <Phone variant="browser" url={`guestrar.com/p/sunrise/children/${kid.id}/passes`}>
+        <span onClick={() => setScreen("home")} style={{ fontSize: 11, color: t.text.link, cursor: "pointer" }}>
+          ‹ Back
+        </span>
+        {kids.length > 1 ? (
+          <div style={{ display: "flex", gap: 6 }}>
+            {kids.map((k) => (
+              <Chip key={k.id} label={k.name.split(" ")[0]} active={k.id === kid.id} onClick={() => setQrId(k.id)} />
+            ))}
+          </div>
+        ) : null}
+        <div style={{ fontSize: 14, fontWeight: 600, color: t.text.primary }}>{kid.name}'s pickup passes</div>
+        {sel ? (
+          <div style={{ border: `1px solid ${t.stroke.secondary}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Avatar name={sel.name} size={32} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text.primary }}>{sel.name}</div>
+                <div style={{ fontSize: 10.5, color: t.text.secondary }}>
+                  {sel.relation} · for {kid.name.split(" ")[0]}
+                  {sel.until ? ` · until ${sel.until}` : ""}
+                </div>
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "center" }}>
+              <QrCode token={sel.token} size={140} />
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
+              <AppButton label="Share" kind="outline" />
+              <AppButton label="Regenerate" kind="outline" onClick={() => actions.regeneratePass(sel)} />
+            </div>
+          </div>
+        ) : (
+          <Small>No passes yet.</Small>
+        )}
+        <Label>All passes for {kid.name.split(" ")[0]} (tap to open)</Label>
+        {passes.map((p) => (
+          <div
+            key={p.key}
+            onClick={() => setSelHolder(p.holderKey)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 8,
+              padding: 6,
+              borderRadius: 8,
+              cursor: "pointer",
+              border: `1px solid ${sel && p.key === sel.key ? t.accent.primary : t.stroke.secondary}`,
+            }}
+          >
+            <QrCode token={p.token} size={28} />
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: t.text.primary }}>{p.name}</div>
+              <div style={{ fontSize: 10.5, color: t.text.secondary }}>{p.relation}</div>
+            </div>
+          </div>
+        ))}
+        <Small tone="tertiary">Each person has their own QR for each child. Regenerate if a phone is lost or a screenshot was shared.</Small>
+      </Phone>
+    );
+  }
+
+  return (
+    <Phone variant="browser" url={url}>
+      <Small>Log in first.</Small>
+      <AppButton label="Go to login" onClick={() => setScreen("mobile")} />
+    </Phone>
+  );
+}
+
+/* ===================== Guard app (home scanner → confirm) ===================== */
+
+type GuardScreen = "entry" | "scan" | "who" | "done" | "blocked" | "invalid";
+
+function GuardApp({
+  world,
+  actions,
+  screen,
+  setScreen,
+  studentId,
+  setStudentId,
+}: {
+  world: World;
+  actions: Actions;
+  screen: GuardScreen;
+  setScreen: (s: GuardScreen) => void;
+  studentId: string;
+  setStudentId: (id: string) => void;
+}) {
+  const t = useHostTheme();
+  const [err, setErr] = useState("");
+  const [passToken, setPassToken] = useState("");
+  const [invalid, setInvalid] = useState<RevokedPass | null>(null);
+  const active = allPasses(world);
+  const pass = active.find((p) => p.token === passToken) ?? passesForStudent(world, studentId)[0];
+  const student = pass ? world.students.find((s) => s.id === pass.studentId) : world.students.find((s) => s.id === studentId);
+
+  const scan = (p: Pass) => {
+    setStudentId(p.studentId);
+    setPassToken(p.token);
+    setErr("");
+    const s = world.students.find((x) => x.id === p.studentId);
+    actions.log("Guard", `Scanned ${p.name}'s pass for ${s?.name ?? "student"}`);
+    setScreen("who");
+  };
+
+  const scanRevoked = (r: RevokedPass) => {
+    setInvalid(r);
+    const s = world.students.find((x) => x.id === r.studentId);
+    actions.log("Guard", `Rejected revoked pass of ${r.name} for ${s?.name ?? "student"}`);
+    setScreen("invalid");
+  };
+
+  if (screen === "entry") {
+    const tiles = ["Make Entry", "Inventory Entry", "Smart Scan", "Entry by Code", "Make Card", "Entry Records", "All Entries", "Announce"];
+    return (
+      <Phone variant="app" title="Sunrise School · Gate 1" sub="Security · Home">
+        <div style={{ display: "flex", alignItems: "center", gap: 8, border: `1px solid ${t.stroke.secondary}`, borderRadius: 10, padding: "8px 10px" }}>
+          <span style={{ fontSize: 12, color: t.text.secondary }}>Sunrise School - Security</span>
+          <span style={{ flex: 1 }} />
+          <span
+            onClick={() => setScreen("scan")}
+            title="Open QR scanner"
+            style={{
+              width: 34,
+              height: 34,
+              borderRadius: 8,
+              border: `2px solid ${t.accent.primary}`,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            <svg width={18} height={18} viewBox="0 0 18 18" fill="none">
+              <path d="M1 6V1h5M12 1h5v5M17 12v5h-5M6 17H1v-5" stroke={t.text.primary} strokeWidth={1.8} />
+              <path d="M4 9h10" stroke={t.accent.primary} strokeWidth={1.8} />
+            </svg>
+          </span>
+        </div>
+        <Small style={{ textAlign: "right" }}>Existing scanner icon (top bar). Tap it.</Small>
+        {err ? <Small tone="red">{err}</Small> : null}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, opacity: 0.55 }}>
+          {tiles.map((x) => (
+            <div key={x} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+              <div style={{ width: 38, height: 38, borderRadius: 10, background: t.fill.secondary }} />
+              <div style={{ fontSize: 9.5, color: t.text.secondary, textAlign: "center" }}>{x}</div>
+            </div>
+          ))}
+        </div>
+        <div style={{ flex: 1 }} />
+        <div style={{ border: `1px solid ${t.stroke.secondary}`, borderRadius: 10, padding: 10 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: t.text.primary, marginBottom: 3 }}>One scanner for everything</div>
+          <Small>
+            Visitor, gate card and pre-approval QR codes work as today. A student pickup pass is recognised by its link and opens Confirm pickup.
+            Entry by Code is not used.
+          </Small>
+        </div>
+      </Phone>
+    );
+  }
+
+  if (screen === "scan") {
+    const corner = (pos: CSSProperties): CSSProperties => ({ position: "absolute", width: 22, height: 22, borderColor: t.accent.primary, borderStyle: "solid", borderWidth: 0, ...pos });
+    return (
+      <Phone variant="app" title="Scan QR Code" sub="Existing scanner screen">
+        <div style={{ position: "relative", height: 210, borderRadius: 12, background: t.fill.secondary, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div style={corner({ top: 30, left: 50, borderTopWidth: 3, borderLeftWidth: 3 })} />
+          <div style={corner({ top: 30, right: 50, borderTopWidth: 3, borderRightWidth: 3 })} />
+          <div style={corner({ bottom: 30, left: 50, borderBottomWidth: 3, borderLeftWidth: 3 })} />
+          <div style={corner({ bottom: 30, right: 50, borderBottomWidth: 3, borderRightWidth: 3 })} />
+          <span style={{ fontSize: 11, color: t.text.secondary }}>Camera</span>
+        </div>
+        <Label>Simulate scanning a pass</Label>
+        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          {active.length === 0 ? <Small tone="tertiary">No active passes yet. Set up a parent on the left first.</Small> : null}
+          {active.map((p) => {
+            const s = world.students.find((x) => x.id === p.studentId);
+            return (
+              <div
+                key={p.token}
+                onClick={() => scan(p)}
+                style={{ display: "flex", alignItems: "center", gap: 8, border: `1px solid ${t.stroke.secondary}`, borderRadius: 8, padding: 6, cursor: "pointer" }}
+              >
+                <QrCode token={p.token} size={30} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: t.text.primary }}>{p.name}</div>
+                  <div style={{ fontSize: 10, color: t.text.tertiary }}>
+                    {p.relation} · for {s?.name ?? "-"}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {world.revoked.map((r) => {
+            const s = world.students.find((x) => x.id === r.studentId);
+            return (
+              <div
+                key={r.token}
+                onClick={() => scanRevoked(r)}
+                style={{ display: "flex", alignItems: "center", gap: 8, border: `1px dashed ${t.stroke.secondary}`, borderRadius: 8, padding: 6, cursor: "pointer", opacity: 0.75 }}
+              >
+                <QrCode token={r.token} size={30} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 12, color: t.text.secondary }}>{r.name} (old pass)</div>
+                  <div style={{ fontSize: 10, color: t.text.tertiary }}>
+                    for {s?.name ?? "-"} · {r.reason}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          <div
+            onClick={() => {
+              setErr("Invalid QR code scanned. (existing message, unchanged)");
+              setScreen("entry");
+            }}
+            style={{ display: "flex", alignItems: "center", gap: 8, border: `1px dashed ${t.stroke.secondary}`, borderRadius: 8, padding: 6, cursor: "pointer" }}
+          >
+            <QrCode token="RANDOMQR" size={30} />
+            <div style={{ fontSize: 12, color: t.text.secondary }}>Some other QR (not Guestrar)</div>
+          </div>
+        </div>
+        <AppButton label="Cancel" kind="outline" onClick={() => setScreen("entry")} />
+        <Small tone="tertiary">Scanned links starting with guestrar.com/sp/ go to the pickup flow.</Small>
+      </Phone>
+    );
+  }
+
+  if (screen === "who" && student && pass) {
+    const waitingAlready = world.requests.find((r) => r.studentId === student.id);
+    const card = (label: string, name: string, line1: string, line2: string, square: boolean) => (
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", alignItems: "center", gap: 4, border: `1px solid ${t.stroke.secondary}`, borderRadius: 10, padding: "10px 6px" }}>
+        <div style={{ fontSize: 10, color: t.text.tertiary }}>{label}</div>
+        <Avatar name={name} size={64} square={square} />
+        <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text.primary, textAlign: "center" }}>{name}</div>
+        <div style={{ fontSize: 10.5, color: t.text.secondary, textAlign: "center" }}>{line1}</div>
+        <div style={{ fontSize: 10, color: t.text.tertiary, textAlign: "center" }}>{line2}</div>
+      </div>
+    );
+    return (
+      <Phone variant="app" title="Confirm pickup" sub="Pass valid">
+        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 12, fontWeight: 600, color: t.category.green }}>
+          <Dot color={t.category.green} /> Valid pass
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {card("Student", student.name, `Class ${student.cls}`, `Roll ${student.roll}`, true)}
+          {card("Pickup person", pass.name, pass.relation, pass.until ? `Until ${pass.until}` : pass.tag, false)}
+        </div>
+        <Small>Check that the face of the person at the gate matches this photo.</Small>
+        {waitingAlready ? (
+          <div style={{ border: `1px solid ${t.stroke.secondary}`, borderRadius: 10, padding: 9, background: t.fill.tertiary }}>
+            <div style={{ fontSize: 12, fontWeight: 600, color: t.text.primary }}>Already on the Pickup Display</div>
+            <Small>
+              {waitingAlready.name} ({waitingAlready.relation}) is already waiting for {student.name.split(" ")[0]}. No second card is added.
+            </Small>
+          </div>
+        ) : null}
+        <div style={{ flex: 1 }} />
+        <AppButton
+          label="Confirm pickup"
+          disabled={Boolean(waitingAlready)}
+          onClick={() => {
+            actions.confirmAtGate(student.id, pass.name, pass.relation);
+            setScreen("done");
+          }}
+        />
+        <AppButton
+          label="Doesn't match photo"
+          kind="outline"
+          onClick={() => {
+            actions.log("Guard", `Face did not match ${pass.name}'s pass for ${student.name}; blocked, parents alerted`);
+            setScreen("blocked");
+          }}
+        />
+      </Phone>
+    );
+  }
+
+  if (screen === "invalid") {
+    const s = invalid ? world.students.find((x) => x.id === invalid.studentId) : undefined;
+    return (
+      <Phone variant="app" title="Student Pickup" sub="Gate 1 · Security">
+        <ResultIcon ok={false} />
+        <div style={{ fontSize: 15, fontWeight: 600, color: t.text.primary, textAlign: "center" }}>Pass not valid</div>
+        <Small style={{ textAlign: "center" }}>
+          {invalid
+            ? `${invalid.name}'s pass for ${s?.name ?? "this student"} was revoked (${invalid.reason.toLowerCase()}). Do not hand over the child.`
+            : "This pass was revoked or has expired."}
+        </Small>
+        <div style={{ flex: 1 }} />
+        <AppButton label="Scan again" onClick={() => setScreen("scan")} />
+      </Phone>
+    );
+  }
+
+  if ((screen === "done" || screen === "blocked") && student) {
+    const ok = screen === "done";
+    const req = world.requests.find((r) => r.studentId === student.id);
+    return (
+      <Phone variant="app" title="Student Pickup" sub="Gate 1 · Security">
+        <ResultIcon ok={ok} />
+        <div style={{ fontSize: 15, fontWeight: 600, color: t.text.primary, textAlign: "center" }}>{ok ? "Sent to Pickup Display" : "Pickup blocked"}</div>
+        <Small style={{ textAlign: "center" }}>
+          {ok
+            ? req
+              ? `${req.name} (${req.relation}) can wait at the gate. Staff inside will see the card and send ${student.name.split(" ")[0]} out.`
+              : `${student.name} has been handed over.`
+            : `Nothing recorded. ${student.parents.map((p) => p.name).join(" and ")} alerted by SMS.`}
+        </Small>
+        <div style={{ flex: 1 }} />
+        <AppButton
+          label="Next scan"
+          onClick={() => {
+            setErr("");
+            setScreen("scan");
+          }}
+        />
+      </Phone>
+    );
+  }
+
+  return (
+    <Phone variant="app" title="Security · Home">
+      <AppButton label="Start" onClick={() => setScreen("entry")} />
+    </Phone>
+  );
+}
+
+/* ===================== Pickup Display (inside school) ===================== */
+
+const CANCEL_REASONS = ["Student absent", "Person left", "Wrong entry"];
+
+function fmtWait(ms: number): string {
+  const sec = Math.max(0, Math.floor(ms / 1000));
+  return `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, "0")}`;
+}
+
+function BoardCard({ req, world, now, actions }: { req: PickupReq; world: World; now: number; actions: Actions }) {
+  const t = useHostTheme();
+  const [cancelOpen, setCancelOpen] = useState(false);
+  const s = world.students.find((x) => x.id === req.studentId);
+  if (!s) return null;
+  const waitMs = now - req.createdAt;
+  const late = waitMs >= 10 * 60000;
+  return (
+    <div style={{ border: `1px solid ${t.stroke.secondary}`, borderRadius: 10, padding: 10, background: t.bg.editor, display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <Avatar name={s.name} size={40} square />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 15, fontWeight: 600, color: t.text.primary }}>{s.name}</div>
+          <div style={{ fontSize: 11, color: t.text.secondary }}>Class {s.cls} · Roll {s.roll}</div>
+        </div>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, color: t.text.secondary }}>
+          <Dot color={req.status === "waiting" ? t.category.yellow : t.category.blue} />
+          {req.status === "waiting" ? "Waiting" : "Sending"}
+        </span>
+      </div>
+      <div style={{ background: t.fill.quaternary, borderRadius: 8, padding: 7, display: "flex", alignItems: "center", gap: 8 }}>
+        <Avatar name={req.name} size={30} />
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ fontSize: 12, fontWeight: 600, color: t.text.primary }}>{req.name}</div>
+          <div style={{ fontSize: 10.5, color: t.text.secondary }}>{req.relation} · at Gate 1</div>
+        </div>
+        <div style={{ textAlign: "right" }}>
+          <div style={{ fontSize: 14, fontWeight: 600, fontVariantNumeric: "tabular-nums", color: late ? t.category.red : t.text.primary }}>{fmtWait(waitMs)}</div>
+          <div style={{ fontSize: 9, color: t.text.tertiary }}>waiting</div>
+        </div>
+      </div>
+      {cancelOpen ? (
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+          <span style={{ fontSize: 11, color: t.text.secondary }}>Reason:</span>
+          {CANCEL_REASONS.map((r) => (
+            <Pill key={r} size="sm" onClick={() => actions.cancelReq(req.id, r)}>
+              {r}
+            </Pill>
+          ))}
+          <Pill size="sm" onClick={() => setCancelOpen(false)}>
+            Keep
+          </Pill>
+        </div>
+      ) : (
+        <Row gap={6} align="center">
+          {req.status === "waiting" ? (
+            <Button variant="secondary" onClick={() => actions.markSending(req.id)}>
+              Sending
+            </Button>
+          ) : null}
+          <Button variant="primary" onClick={() => actions.handOver(req.id)}>
+            Handed over
+          </Button>
+          <Spacer />
+          <Button variant="ghost" onClick={() => setCancelOpen(true)}>
+            Cancel
+          </Button>
+        </Row>
+      )}
+    </div>
+  );
+}
+
+function PickupDisplay({ world, now, actions }: { world: World; now: number; actions: Actions }) {
+  const t = useHostTheme();
+  const [filter, setFilter] = useState("All");
+  const classes = ["All", ...Array.from(new Set(world.students.map((s) => s.cls)))];
+  const visible = world.requests.filter((r) => filter === "All" || world.students.find((s) => s.id === r.studentId)?.cls === filter);
+  const waiting = world.requests.filter((r) => r.status === "waiting").length;
+  const sending = world.requests.filter((r) => r.status === "sending").length;
+  return (
+    <div style={{ border: `1px solid ${t.stroke.primary}`, borderRadius: 20, padding: 9, background: t.bg.chrome }}>
+      <div style={{ height: 470, borderRadius: 13, border: `1px solid ${t.stroke.tertiary}`, background: t.bg.editor, overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 14px", background: t.accent.primary, color: t.text.onAccent }}>
+          <div>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>Pickup Display</div>
+            <div style={{ fontSize: 10, opacity: 0.85 }}>Sunrise School · inside the school</div>
+          </div>
+          <span style={{ flex: 1 }} />
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>{waiting}</div>
+            <div style={{ fontSize: 10, opacity: 0.85 }}>waiting</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 15, fontWeight: 600 }}>{sending}</div>
+            <div style={{ fontSize: 10, opacity: 0.85 }}>being sent</div>
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, padding: "7px 14px", borderBottom: `1px solid ${t.stroke.tertiary}` }}>
+          <span style={{ fontSize: 11, color: t.text.tertiary, marginRight: 4 }}>Class</span>
+          {classes.map((c) => (
+            <Pill key={c} size="sm" active={c === filter} onClick={() => setFilter(c)}>
+              {c}
+            </Pill>
+          ))}
+          <span style={{ flex: 1 }} />
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 10, color: t.text.tertiary }}>
+            <Dot color={t.category.green} /> Updates every 3 s
+          </span>
+        </div>
+        <div style={{ flex: 1, overflowY: "auto", padding: 12 }}>
+          {visible.length === 0 ? (
+            <div style={{ height: "100%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, color: t.text.tertiary, textAlign: "center" }}>
+              No one waiting. Cards appear here when security taps Confirm pickup.
+            </div>
+          ) : (
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(230px, 1fr))", gap: 10 }}>
+              {visible.map((r) => (
+                <BoardCard key={r.id} req={r} world={world} now={now} actions={actions} />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ===================== Page ===================== */
+
+function JumpBar<T extends string>({ items, current, onJump }: { items: Array<[T, string]>; current: T; onJump: (v: T) => void }) {
+  return (
+    <div style={{ display: "flex", gap: 5, flexWrap: "wrap", maxWidth: 290 }}>
+      {items.map(([id, label]) => (
+        <Pill key={id} size="sm" active={id === current} onClick={() => onJump(id)}>
+          {label}
+        </Pill>
+      ))}
+    </div>
+  );
+}
+
+function HowItWorks() {
+  const t = useHostTheme();
+  const steps: Array<[string, string, string]> = [
+    ["School adds students, shares link", "Admin web + WhatsApp", "Name, class and parent mobiles (or CSV). School posts the portal link in class WhatsApp groups."],
+    ["Parent verifies by OTP", "Parent web", "Only mobiles in the school records get an OTP. Others see Not registered."],
+    ["Parent adds pickup persons", "Parent web", "Every person gets a separate QR pass for each child they may collect."],
+    ["Guard scans the pass", "Guestrar app", "Existing QR scanner on the home screen. The pass shows exactly which child and which person."],
+    ["Guard confirms the face", "Guestrar app", "Confirm pickup adds a card to the Pickup Display inside the school."],
+    ["Staff inside hand over", "Pickup Display", "Staff send the child, tap Handed over; card disappears and parents are notified."],
+  ];
+
+  return (
+    <Grid columns={3} gap={16}>
+      {steps.map(([title, where, text], i) => (
+        <div key={title} style={{ display: "flex", gap: 10 }}>
+          <div
+            style={{
+              width: 24,
+              height: 24,
+              borderRadius: 12,
+              background: t.fill.secondary,
+              color: t.text.primary,
+              fontSize: 12,
+              fontWeight: 600,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
+          >
+            {i + 1}
+          </div>
+          <div>
+            <div style={{ fontSize: 13, fontWeight: 600, color: t.text.primary }}>{title}</div>
+            <div style={{ fontSize: 11, color: t.text.tertiary, marginBottom: 2 }}>{where}</div>
+            <div style={{ fontSize: 12, color: t.text.secondary, lineHeight: "17px" }}>{text}</div>
+          </div>
+        </div>
+      ))}
+    </Grid>
+  );
+}
+
+function StudentPickupParentPortal() {
+  const t = useHostTheme();
+  const [world, setWorld] = useState<World>(initialWorld);
+  const [activity, setActivity] = useState<Activity[]>(initialActivity);
+  const [adminTab, setAdminTab] = useState<AdminTab>("students");
+  const [pScreen, setPScreen] = useState<ParentScreen>("sms");
+  const [pMobile, setPMobile] = useState<string | null>(null);
+  const [qrId, setQrId] = useState("s1");
+  const [gScreen, setGScreen] = useState<GuardScreen>("entry");
+  const [gStudent, setGStudent] = useState("s1");
+  const [now, setNow] = useState(() => Date.now());
+
+  useEffect(() => {
+    const h = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(h);
+  }, []);
+
+  const log = (who: string, text: string) => setActivity((prev) => [{ id: Date.now() + Math.random(), time: clock(), who, text }, ...prev]);
+
+  const actions: Actions = {
+    log,
+    addStudent: (s) => {
+      const token = `SP${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+      setWorld((w) => ({ ...w, students: [...w.students, { ...s, id: `s${Date.now()}`, token }] }));
+      log("School admin", `Added ${s.name} (${s.cls})`);
+    },
+    markOpened: (mobile) => {
+      setWorld((w) => ({ ...w, invites: { ...w.invites, [mobile]: true } }));
+    },
+    sendInvites: () => {
+      log("School admin", "Opened WhatsApp and posted the parent link in the class groups (manual, no SMS)");
+      if (!pMobile) setPScreen("sms");
+    },
+    saveProfile: (p) => {
+      setWorld((w) => ({ ...w, profiles: [...w.profiles.filter((x) => x.mobile !== p.mobile), p] }));
+      const n = childrenOf(world, p.mobile).length;
+      log(p.name, `Created profile with photo; ${n} own ${n === 1 ? "pass" : "passes"} created (one per child)`);
+    },
+    addPerson: (p) => {
+      setWorld((w) => ({ ...w, persons: [...w.persons, { ...p, id: `pp${Date.now()}` }] }));
+      const names = world.students
+        .filter((s) => p.studentIds.includes(s.id))
+        .map((s) => s.name.split(" ")[0])
+        .join(", ");
+      const n = p.studentIds.length;
+      log(
+        parentRecord(world, p.addedBy)?.name ?? "Parent",
+        `Added ${p.name} (${p.relation}) for ${names}: ${n} ${n === 1 ? "pass" : "passes"} created, SMS with link sent to ${p.name.split(" ")[0]}`,
+      );
+    },
+    removePerson: (id) => {
+      const p = world.persons.find((x) => x.id === id);
+      if (!p) return;
+      const revokedNow: RevokedPass[] = p.studentIds.map((sid) => ({
+        token: `PS-${passKey(p.id, sid)}-v${world.passVersion[passKey(p.id, sid)] ?? 1}`,
+        studentId: sid,
+        name: p.name,
+        relation: p.relation,
+        reason: "Removed by parent",
+      }));
+      setWorld((w) => ({ ...w, persons: w.persons.filter((x) => x.id !== id), revoked: [...w.revoked, ...revokedNow] }));
+      log(parentRecord(world, p.addedBy)?.name ?? "Parent", `Removed ${p.name}; ${revokedNow.length} ${revokedNow.length === 1 ? "pass" : "passes"} revoked`);
+    },
+    regeneratePass: (pass) => {
+      const v = world.passVersion[pass.key] ?? 1;
+      setWorld((w) => ({
+        ...w,
+        passVersion: { ...w.passVersion, [pass.key]: v + 1 },
+        revoked: [...w.revoked, { token: pass.token, studentId: pass.studentId, name: pass.name, relation: pass.relation, reason: "Regenerated by parent" }],
+      }));
+      const s = world.students.find((x) => x.id === pass.studentId);
+      log("Parent", `Regenerated ${pass.name}'s pass for ${s?.name ?? "child"}; old QR no longer works`);
+    },
+    confirmAtGate: (studentId, who, relation) => {
+      const s2 = world.students.find((x) => x.id === studentId);
+      setWorld((w) => ({ ...w, requests: [...w.requests, { id: Date.now(), studentId, name: who, relation, status: "waiting", createdAt: Date.now() }] }));
+      if (s2) log("Guard", `Confirmed ${who} (${relation}) at the gate for ${s2.name}; card added to the Pickup Display`);
+    },
+    markSending: (id) => {
+      const r = world.requests.find((x) => x.id === id);
+      setWorld((w) => ({ ...w, requests: w.requests.map((x) => (x.id === id ? { ...x, status: "sending" } : x)) }));
+      const s2 = r ? world.students.find((x) => x.id === r.studentId) : undefined;
+      if (s2) log("School staff", `Sending ${s2.name} to the gate`);
+    },
+    handOver: (id) => {
+      const r = world.requests.find((x) => x.id === id);
+      if (!r) return;
+      const s2 = world.students.find((x) => x.id === r.studentId);
+      setWorld((w) => ({
+        ...w,
+        requests: w.requests.filter((x) => x.id !== id),
+        pickups: [...w.pickups, { id: Date.now(), studentId: r.studentId, who: r.name, relation: r.relation, time: clock() }],
+      }));
+      if (s2) log("School staff", `${s2.name} handed over to ${r.name} (${r.relation}); card removed, parents notified`);
+    },
+    cancelReq: (id, reason) => {
+      const r = world.requests.find((x) => x.id === id);
+      if (!r) return;
+      const s2 = world.students.find((x) => x.id === r.studentId);
+      setWorld((w) => ({ ...w, requests: w.requests.filter((x) => x.id !== id) }));
+      if (s2) log("School staff", `Cancelled pickup of ${s2.name} (${reason}); parents notified`);
+    },
+  };
+
+  const ensureParentLoggedIn = (): string => {
+    const m = pMobile ?? "9876500001";
+    if (!pMobile) setPMobile(m);
+    if (!world.profiles.some((p) => p.mobile === m)) {
+      const rec = parentRecord(world, m);
+      setWorld((w) => ({ ...w, profiles: [...w.profiles, { mobile: m, name: rec?.name ?? "Parent", relation: rec?.relation ?? "Father", photo: true }] }));
+    }
+    return m;
+  };
+
+  const jumpParent = (s: ParentScreen) => {
+    if (s === "otp" || s === "profile") {
+      if (!pMobile) setPMobile("9876500001");
+    }
+    if (s === "home" || s === "add" || s === "qr") {
+      const m = ensureParentLoggedIn();
+      if (s === "qr") {
+        const kids = childrenOf(world, m);
+        if (kids.length && !kids.some((k) => k.id === qrId)) setQrId(kids[0].id);
+      }
+    }
+    setPScreen(s);
+  };
+
+  const jumpGuard = (s: GuardScreen) => {
+    if ((s === "who" || s === "done" || s === "blocked") && passesForStudent(world, gStudent).length === 0) setGStudent("s3");
+    setGScreen(s);
+  };
+
+  const reset = () => {
+    setWorld(initialWorld());
+    setActivity(initialActivity());
+    setAdminTab("students");
+    setPScreen("sms");
+    setPMobile(null);
+    setQrId("s1");
+    setGScreen("entry");
+    setGStudent("s1");
+  };
+
+  return (
+    <Stack gap={28} style={{ padding: 4 }}>
+      <Stack gap={6}>
+        <H1>Student pickup with parent web portal</H1>
+        <Text tone="secondary">
+          The school adds students and parent mobiles on the web and posts one link in the class WhatsApp groups (manually, no SMS). Parents verify
+          by OTP, create one profile for
+          all their children and add pickup persons. Every pickup person gets a separate QR pass for each child. The guard scans the pass in the
+          Guestrar app and confirms the face; the entry then appears on the Pickup Display inside the school, where staff send the child and mark the
+          handover.
+        </Text>
+      </Stack>
+
+      <Stack gap={12}>
+        <H2>How it works</H2>
+        <HowItWorks />
+      </Stack>
+
+      <Stack gap={14}>
+        <Row align="center">
+          <Stack gap={2}>
+            <H2>Clickable prototype</H2>
+            <Text size="small" tone="secondary">
+              All three screens share the same data. Suggested path: Share on WhatsApp, tap the link in the group message, verify 9876500001 with OTP 1234,
+              create the profile, add a driver for Aarav only, then on the guard phone tap the scanner icon, scan the driver's pass and Confirm pickup. Watch
+              the card appear on the Pickup Display, then tap Sending and Handed over. Remove the driver and scan his old pass to see it rejected.
+            </Text>
+          </Stack>
+          <Spacer />
+          <Button variant="secondary" onClick={reset}>
+            Reset prototype
+          </Button>
+        </Row>
+
+        <Stack gap={6}>
+          <Text weight="semibold">School admin (web)</Text>
+          <AdminWeb world={world} actions={actions} tab={adminTab} setTab={setAdminTab} />
+        </Stack>
+
+        <div style={{ display: "flex", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
+          <Stack gap={6}>
+            <Text weight="semibold">Parent (phone browser, no app needed)</Text>
+            <JumpBar<ParentScreen>
+              items={[
+                ["sms", "WhatsApp"],
+                ["mobile", "Mobile"],
+                ["notreg", "Not registered"],
+                ["otp", "OTP"],
+                ["profile", "Profile"],
+                ["home", "Home"],
+                ["add", "Add person"],
+                ["qr", "Passes"],
+              ]}
+              current={pScreen}
+              onJump={jumpParent}
+            />
+            <ParentPortal
+              world={world}
+              actions={actions}
+              screen={pScreen}
+              setScreen={setPScreen}
+              mobile={pMobile}
+              setMobile={setPMobile}
+              qrId={qrId}
+              setQrId={setQrId}
+            />
+          </Stack>
+
+          <Stack gap={6}>
+            <Text weight="semibold">Security (Guestrar app)</Text>
+            <JumpBar<GuardScreen>
+              items={[
+                ["entry", "Home"],
+                ["scan", "Scanner"],
+                ["who", "Confirm"],
+                ["done", "Sent"],
+                ["blocked", "Blocked"],
+                ["invalid", "Invalid pass"],
+              ]}
+              current={gScreen}
+              onJump={jumpGuard}
+            />
+            <GuardApp world={world} actions={actions} screen={gScreen} setScreen={setGScreen} studentId={gStudent} setStudentId={setGStudent} />
+          </Stack>
+
+          <Stack gap={6} style={{ flex: 1, minWidth: 480 }}>
+            <Text weight="semibold">Inside the school: Pickup Display (tablet / staff phone)</Text>
+            <PickupDisplay world={world} now={now} actions={actions} />
+          </Stack>
+        </div>
+
+        <Stack gap={6}>
+          <Text weight="semibold">What just happened</Text>
+          <div style={{ border: `1px solid ${t.stroke.secondary}`, borderRadius: 10, padding: 12, maxHeight: 260, overflowY: "auto" }}>
+            {activity.map((a, i) => (
+              <div key={a.id} style={{ padding: "7px 0", borderTop: i > 0 ? `1px solid ${t.stroke.tertiary}` : undefined }}>
+                <div style={{ fontSize: 10.5, color: t.text.tertiary }}>
+                  {a.time} · {a.who}
+                </div>
+                <div style={{ fontSize: 12, color: t.text.primary, lineHeight: "17px" }}>{a.text}</div>
+              </div>
+            ))}
+          </div>
+        </Stack>
+      </Stack>
+
+      <Stack gap={10}>
+        <H2>Screens</H2>
+        <Table
+          headers={["ID", "Who", "Where", "Screen", "Purpose"]}
+          rows={[
+            ["W1", "School admin", "Web", "Students", "List with parent mobiles and setup status; Parent link with Copy / Share on WhatsApp"],
+            ["W2", "School admin", "Web", "Add student / Import CSV", "Student name, class, roll, 1–2 parents with mobile"],
+            ["W3", "School admin", "Web", "Passes", "Every pass per student and holder; revoke; print for people without a smartphone"],
+            ["W4", "School admin", "Web", "Pickup history", "Who picked up which child, when, recorded by which guard"],
+            ["P0", "Parent", "WhatsApp group", "Link posted by school", "Same portal link for all parents, shared manually"],
+            ["P1", "Parent", "Web", "Enter mobile", "Only numbers in school records continue"],
+            ["P2", "Parent", "Web", "Not registered", "Number not found; contact school office"],
+            ["P3", "Parent", "Web", "OTP", "4-digit OTP, 5-minute validity, limited attempts"],
+            ["P4", "Parent", "Web", "Create profile", "First time only: name, relation, photo; shows linked children"],
+            ["P5", "Parent", "Web", "Home", "Children with Passes button, who can pick up, remove person"],
+            ["P6", "Parent", "Web", "Add pickup person", "Photo, name, relation, mobile, which children, temporary; creates one pass per child"],
+            ["P7", "Parent", "Web", "Child's passes", "One QR per person for this child; share, regenerate"],
+            ["PP2", "Pickup person", "Web", "My passes", "Person verifies own mobile by OTP and sees only their passes"],
+            ["S1", "Security", "App", "Home (existing)", "Scanner icon in the top bar, same as for visitor QR codes"],
+            ["S2", "Security", "App", "Scan QR Code (existing)", "Pass link guestrar.com/sp/... is routed to the pickup flow; other QR codes unchanged"],
+            ["S3", "Security", "App", "Confirm pickup", "Student and pass holder photos side by side; Confirm or Doesn't match"],
+            ["S3e", "Security", "App", "Invalid pass", "Revoked, expired, unknown or other-school pass"],
+            ["S4", "Security", "App", "Sent to display / Blocked", "Card added to the Pickup Display, or attempt blocked and parents alerted"],
+            ["D1", "School staff", "App (display login)", "Pickup Display", "Cards for everyone confirmed at the gate: student, person, waiting time; class filter"],
+            ["D2", "School staff", "App (display login)", "Sending / Handed over", "Sending tells other staff it is handled; Handed over removes the card and notifies parents"],
+            ["D3", "School staff", "App (display login)", "Cancel", "Reason: student absent, person left, wrong entry; parents notified"],
+          ]}
+        />
+      </Stack>
+
+      <Stack gap={10}>
+        <H2>Rules</H2>
+        <Table
+          headers={["Situation", "What happens"]}
+          rows={[
+            ["Mobile not in any student's record", "No OTP is sent; parent sees Not registered and contacts the school"],
+            ["Parent with two children", "One profile, one OTP; the parent has 2 passes; each person gets a pass per allowed child"],
+            ["Both parents have mobiles", "Each verifies separately; both see the same children and the same pickup persons"],
+            ["Person allowed for one child only", "Has no pass for the other child, so cannot collect them"],
+            ["Someone else shows a valid pass", "Guard sees the holder's photo, taps Doesn't match; blocked and parents alerted"],
+            ["Person removed or child unticked", "Their pass is revoked immediately; scanning it shows Pass not valid"],
+            ["Parent wants to change something", "Opens the same link, verifies OTP again, edits; changes apply at the gate at once"],
+            ["Lost phone or shared screenshot", "Parent regenerates that pass; old QR stops working"],
+            ["Temporary person after end date", "Pass expires automatically"],
+            ["Second person arrives for the same child", "Guard sees Already on the Pickup Display; no second card"],
+            ["Card left on the display too long", "Timer turns red after 10 minutes; auto-expires after 30 minutes"],
+          ]}
+        />
+      </Stack>
+    </Stack>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<StudentPickupParentPortal />);
+
+</script>
+<script>
+  (function () {
+    var src = document.getElementById("app-src").textContent;
+    try {
+      var out = Babel.transform(src, {
+        filename: "app.tsx",
+        presets: [["typescript", { isTSX: true, allExtensions: true }], ["react", { runtime: "classic" }]],
+      }).code;
+      new Function(out)();
+    } catch (e) {
+      document.getElementById("root").innerHTML = '<pre style="color:#d1242f;white-space:pre-wrap">' + String(e && e.stack || e) + '</pre>';
+      console.error(e);
+    }
+  })();
+</script>
+</body>
+</html>

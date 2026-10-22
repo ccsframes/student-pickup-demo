@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Student Pickup - Demo (Guestrar)</title>
+<style>
+  body { margin: 0; background: #f6f8fa; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; color: #1b1f24; }
+  main { max-width: 760px; margin: 0 auto; padding: 48px 24px; }
+  h1 { font-size: 26px; margin: 0 0 8px; }
+  p.lead { color: #57606a; font-size: 15px; line-height: 22px; margin: 0 0 28px; }
+  a.card { display: block; text-decoration: none; color: inherit; background: #fff; border: 1px solid rgba(20,20,20,0.13); border-radius: 12px; padding: 18px 20px; margin-bottom: 14px; }
+  a.card:hover { border-color: #106DBA; }
+  a.card h2 { font-size: 17px; margin: 0 0 4px; color: #106DBA; }
+  a.card p { margin: 0; font-size: 13.5px; line-height: 20px; color: #57606a; }
+  ol { color: #57606a; font-size: 13.5px; line-height: 22px; padding-left: 20px; }
+  .note { font-size: 12px; color: #8b949e; margin-top: 28px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Student Pickup</h1>
+  <p class="lead">
+    Safe school pickup with Guestrar. Parents verify by OTP and add pickup persons; every person gets a separate QR pass for each child.
+    Security scans the pass, the Pickup Display inside the school shows who is waiting, and staff mark the handover.
+  </p>
+
+  <a class="card" href="student-pickup-prototype.html">
+    <h2>Working prototype</h2>
+    <p>Clickable end-to-end demo: school admin web, parent portal, security app and the Pickup Display, all connected.</p>
+  </a>
+
+  <a class="card" href="parent-portal-flow.html">
+    <h2>Parent portal flow</h2>
+    <p>Every parent and pickup-person screen step by step, with the flow chart and problem cases.</p>
+  </a>
+
+  <ol>
+    <li>Open the working prototype and click <b>Share on WhatsApp</b>.</li>
+    <li>Tap the link in the WhatsApp group, enter <b>9876500001</b>, OTP <b>1234</b>.</li>
+    <li>Create the profile and add a driver.</li>
+    <li>On the security phone tap the scanner icon, scan the driver's pass, <b>Confirm pickup</b>.</li>
+    <li>On the Pickup Display tap <b>Sending</b>, then <b>Handed over</b>.</li>
+  </ol>
+
+  <p class="note">Demo with sample data only. No real SMS, OTP or backend. Requires an internet connection.</p>
+</main>
+</body>
+</html>
