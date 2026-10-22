@@ -899,7 +899,7 @@ function AdminHistory({ world }: { world: World }) {
 
 /* ===================== Parent web portal ===================== */
 
-type ParentScreen = "sms" | "mobile" | "notreg" | "otp" | "profile" | "home" | "add" | "qr";
+type ParentScreen = "sms" | "mobile" | "notreg" | "otp" | "profile" | "home" | "add" | "qr" | "pass";
 
 const PERSON_RELATIONS = ["Driver", "Grandparent", "Uncle / Aunt", "Neighbour", "Other"];
 
@@ -1265,12 +1265,15 @@ function ParentPortal({
     const kid = kids.find((k) => k.id === qrId) ?? kids[0];
     if (!kid) return null;
     const passes = passesForStudent(world, kid.id);
-    const sel = passes.find((p) => p.holderKey === selHolder) ?? passes[0];
+    const first = kid.name.split(" ")[0];
     return (
       <Phone variant="browser" url={`guestrar.com/p/sunrise/children/${kid.id}/passes`}>
-        <span onClick={() => setScreen("home")} style={{ fontSize: 11, color: t.text.link, cursor: "pointer" }}>
-          ‹ Back
-        </span>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span onClick={() => setScreen("home")} style={{ fontSize: 18, lineHeight: "16px", color: t.text.link, cursor: "pointer" }}>
+            ‹
+          </span>
+          <span style={{ fontSize: 15, fontWeight: 600, color: t.text.primary }}>Pickup passes</span>
+        </div>
         {kids.length > 1 ? (
           <div style={{ display: "flex", gap: 6 }}>
             {kids.map((k) => (
@@ -1278,53 +1281,98 @@ function ParentPortal({
             ))}
           </div>
         ) : null}
-        <div style={{ fontSize: 14, fontWeight: 600, color: t.text.primary }}>{kid.name}'s pickup passes</div>
-        {sel ? (
-          <div style={{ border: `1px solid ${t.stroke.secondary}`, borderRadius: 12, padding: 10, display: "flex", flexDirection: "column", gap: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <Avatar name={sel.name} size={32} />
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text.primary }}>{sel.name}</div>
-                <div style={{ fontSize: 10.5, color: t.text.secondary }}>
-                  {sel.relation} · for {kid.name.split(" ")[0]}
-                  {sel.until ? ` · until ${sel.until}` : ""}
-                </div>
-              </div>
-            </div>
-            <div style={{ display: "flex", justifyContent: "center" }}>
-              <QrCode token={sel.token} size={140} />
-            </div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
-              <AppButton label="Share" kind="outline" />
-              <AppButton label="Regenerate" kind="outline" onClick={() => actions.regeneratePass(sel)} />
-            </div>
-          </div>
-        ) : (
-          <Small>No passes yet.</Small>
-        )}
-        <Label>All passes for {kid.name.split(" ")[0]} (tap to open)</Label>
+        <Small>
+          {passes.length} {passes.length === 1 ? "person can" : "people can"} collect {first}. Each has a separate QR.
+        </Small>
+        {passes.length === 0 ? <Small tone="tertiary">No passes yet.</Small> : null}
         {passes.map((p) => (
           <div
             key={p.key}
-            onClick={() => setSelHolder(p.holderKey)}
+            onClick={() => {
+              setSelHolder(p.holderKey);
+              setScreen("pass");
+            }}
             style={{
               display: "flex",
               alignItems: "center",
-              gap: 8,
-              padding: 6,
-              borderRadius: 8,
+              gap: 9,
+              padding: 7,
+              borderRadius: 10,
               cursor: "pointer",
-              border: `1px solid ${sel && p.key === sel.key ? t.accent.primary : t.stroke.secondary}`,
+              border: `1px solid ${t.stroke.secondary}`,
             }}
           >
-            <QrCode token={p.token} size={28} />
+            <QrCode token={p.token} size={34} />
             <div style={{ flex: 1, minWidth: 0 }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: t.text.primary }}>{p.name}</div>
-              <div style={{ fontSize: 10.5, color: t.text.secondary }}>{p.relation}</div>
+              <div style={{ fontSize: 12.5, fontWeight: 600, color: t.text.primary }}>{p.name}</div>
+              <div style={{ fontSize: 10.5, color: t.text.secondary }}>
+                {p.relation}
+                {p.holderKey === `pr-${mobile}` ? " · you" : ""}
+                {p.until ? ` · until ${p.until}` : ""}
+              </div>
             </div>
+            <span style={{ fontSize: 11, color: t.text.link }}>Open</span>
           </div>
         ))}
-        <Small tone="tertiary">Each person has their own QR for each child. Regenerate if a phone is lost or a screenshot was shared.</Small>
+      </Phone>
+    );
+  }
+
+  if (screen === "pass" && mobile) {
+    const kid = kids.find((k) => k.id === qrId) ?? kids[0];
+    if (!kid) return null;
+    const passes = passesForStudent(world, kid.id);
+    const sel = passes.find((p) => p.holderKey === selHolder) ?? passes[0];
+    if (!sel) return null;
+    const passNo = 4400 + (sel.token.length * 7 + (world.passVersion[sel.key] ?? 1)) % 100;
+    const card = (label: string, name: string, sub: string, square: boolean) => (
+      <div
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 3,
+          border: `1px solid ${t.stroke.secondary}`,
+          borderRadius: 10,
+          padding: "8px 6px",
+        }}
+      >
+        <div style={{ fontSize: 10, color: t.text.tertiary }}>{label}</div>
+        <Avatar name={name} size={40} square={square} />
+        <div style={{ fontSize: 12, fontWeight: 600, color: t.text.primary, textAlign: "center" }}>{name}</div>
+        <div style={{ fontSize: 10.5, color: t.text.secondary, textAlign: "center" }}>{sub}</div>
+      </div>
+    );
+    return (
+      <Phone variant="browser" url={`guestrar.com/p/sunrise/passes/${passNo}`}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span onClick={() => setScreen("qr")} style={{ fontSize: 18, lineHeight: "16px", color: t.text.link, cursor: "pointer" }}>
+            ‹
+          </span>
+          <span style={{ fontSize: 15, fontWeight: 600, color: t.text.primary }}>Pickup pass</span>
+        </div>
+        <div style={{ display: "flex", gap: 8 }}>
+          {card("Student", kid.name, `Class ${kid.cls}`, true)}
+          {card("Pickup person", sel.name, sel.until ? `${sel.relation} · until ${sel.until}` : sel.relation, false)}
+        </div>
+        <div style={{ display: "flex", justifyContent: "center", padding: 8, border: `1px solid ${t.stroke.secondary}`, borderRadius: 12 }}>
+          <QrCode token={sel.token} size={150} />
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+          <AppButton label="Share" kind="outline" onClick={() => actions.log(me?.name ?? "Parent", `Shared ${sel.name}'s pass for ${kid.name} on WhatsApp`)} />
+          <AppButton label="Resend SMS" kind="outline" onClick={() => actions.log(me?.name ?? "Parent", `Resent pass SMS to ${sel.name}`)} />
+        </div>
+        <div
+          onClick={() => actions.regeneratePass(sel)}
+          style={{ fontSize: 12.5, color: t.category.red, textAlign: "center", cursor: "pointer", padding: "4px 0" }}
+        >
+          Regenerate QR
+        </div>
+        <Small tone="tertiary" style={{ textAlign: "center" }}>
+          Regenerate if a phone is lost or a screenshot was shared. The old QR stops working at once.
+        </Small>
       </Phone>
     );
   }
@@ -1898,9 +1946,9 @@ function StudentPickupParentPortal() {
     if (s === "otp" || s === "profile") {
       if (!pMobile) setPMobile("9876500001");
     }
-    if (s === "home" || s === "add" || s === "qr") {
+    if (s === "home" || s === "add" || s === "qr" || s === "pass") {
       const m = ensureParentLoggedIn();
-      if (s === "qr") {
+      if (s === "qr" || s === "pass") {
         const kids = childrenOf(world, m);
         if (kids.length && !kids.some((k) => k.id === qrId)) setQrId(kids[0].id);
       }
@@ -1976,6 +2024,7 @@ function StudentPickupParentPortal() {
                 ["home", "Home"],
                 ["add", "Add person"],
                 ["qr", "Passes"],
+                ["pass", "One pass"],
               ]}
               current={pScreen}
               onJump={jumpParent}
